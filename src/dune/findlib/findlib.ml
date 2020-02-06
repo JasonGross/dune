@@ -163,8 +163,7 @@ let builtin_for_dune : Dune_package.t =
   ; entries = Lib_name.Map.singleton (Dune_package.Entry.name entry) entry
   ; version = None
   ; dir = Path.root
-  ; share = None
-  ; lib = None
+  ; sites = Section.Map.empty
   }
 
 type db =
@@ -430,8 +429,7 @@ end = struct
         Dune_package.Entry.version e)
     ; entries
     ; dir
-    ; share = None
-    ; lib = None
+    ; sites = Section.Map.empty
     }
 
   let load_and_convert db ~dir ~meta_file ~name =

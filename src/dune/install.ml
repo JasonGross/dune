@@ -162,6 +162,15 @@ module Section = struct
       | Man -> t.man
       | Misc -> Code_error.raise "Install.Paths.get" []
 
+    let get_local_location context section package_name =
+      (* check that we get the good path *)
+      let install_dir = Config.local_install_dir ~context in
+      let install_dir = Path.build install_dir in
+      let paths =
+        make ~package:package_name ~destdir:install_dir ()
+      in
+      get paths section
+
     let install_path t section p =
       Path.relative (get t section) (Dst.to_string p)
   end

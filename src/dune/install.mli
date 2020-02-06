@@ -56,6 +56,8 @@ module Section : sig
 
     val install_path : t -> section -> Dst.t -> Path.t
     val get: t -> section -> Path.t
+
+    val get_local_location: Context_name.t -> section -> Package.Name.t -> Path.t
   end
   with type section := t
 end

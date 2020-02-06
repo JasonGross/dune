@@ -62,8 +62,7 @@ type t =
   { name : Package.Name.t
   ; entries : Entry.t Lib_name.Map.t
   ; version : string option
-  ; share : Path.t option
-  ; lib : Path.t option
+  ; sites : Path.t Section.Map.t
   ; dir : Path.t
   }
 

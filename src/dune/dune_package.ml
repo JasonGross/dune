@@ -288,8 +288,7 @@ type t =
   { name : Package.Name.t
   ; entries : Entry.t Lib_name.Map.t
   ; version : string option
-  ; share : Path.t option
-  ; lib : Path.t option
+  ; sites : Path.t Section.Map.t
   ; dir : Path.t
   }
 
@@ -297,8 +296,7 @@ let decode ~lang ~dir =
   let open Dune_lang.Decoder in
   let+ name = field "name" Package.Name.decode
   and+ version = field_o "version" string
-  and+ share = field_o "location_share" string
-  and+ lib = field_o "location_lib" string
+  and+ (loc,sites) = located (field ~default:[] "sites" (repeat (pair Section.decode Dpath.decode)))
   and+ entries = leftover_fields_as_sums (Entry.cstrs ~lang ~dir) in
   let entries =
     List.map entries ~f:(fun e ->
@@ -320,8 +318,14 @@ let decode ~lang ~dir =
         ]
   in
   { name; version; entries; dir
-  ; share = Option.map ~f:Path.of_string share
-  ; lib = Option.map ~f:Path.of_string lib
+  ; sites = Section.Map.of_list sites
+            |> (function
+              | Ok x -> x
+              | Error (s, _, _) ->
+                User_error.raise ~loc
+                  [ Pp.textf "The section %s appears multiple times"
+                      (Section.to_string s)]
+            )
   }
 
 let () = Vfile.Lang.register Stanza.syntax ()
@@ -337,22 +341,15 @@ let prepend_version ~dune_version sexps =
   ]
   @ sexps
 
-let encode ~dune_version { entries; name; version; dir; share; lib } =
+let encode ~dune_version { entries; name; version; dir; sites } =
+  let open Dune_lang.Encoder in
+  let sites = (Section.Map.to_list (Section.Map.map ~f:Path.to_absolute_filename sites)) in
+  let sexp = record_fields [
+    field "name" Package.Name.encode name;
+    field_o "version" string version;
+    field_l "sites" (pair Section.encode string) sites
+  ] in
   let list s = Dune_lang.List s in
-  let option sexp name conv = function
-    | None -> sexp
-    | Some v ->
-      sexp
-      @ [ list
-            [ Dune_lang.atom name
-            ; Dune_lang.atom_or_quoted_string (conv v)
-            ]
-        ]
-  in
-  let sexp = [ list [ Dune_lang.atom "name"; Package.Name.encode name ] ] in
-  let sexp = option sexp "version" (fun x -> x) version in
-  let sexp = option sexp "location_share" Path.to_absolute_filename share in
-  let sexp = option sexp "location_lib" Path.to_absolute_filename lib in
   let entries =
     Lib_name.Map.to_list entries
     |> List.map ~f:(fun (_name, e) ->
@@ -369,7 +366,7 @@ let encode ~dune_version { entries; name; version; dir; share; lib } =
   in
   prepend_version ~dune_version (List.concat [ sexp; entries ])
 
-let to_dyn { entries; name; version; dir; share; lib } =
+let to_dyn { entries; name; version; dir; sites } =
   let open Dyn.Encoder in
   record
     [ ( "entries"
@@ -377,8 +374,7 @@ let to_dyn { entries; name; version; dir; share; lib } =
     ; ("name", Package.Name.to_dyn name)
     ; ("version", option string version)
     ; ("dir", Path.to_dyn dir)
-    ; ("share", option Path.to_dyn share)
-    ; ("lib", option Path.to_dyn lib)
+    ; ("sites", Section.Map.to_dyn Path.to_dyn sites)
     ]
 
 module Or_meta = struct

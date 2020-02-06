@@ -18,6 +18,7 @@ type t =
 
 let compare : t -> t -> Ordering.t = Poly.compare
 
+
 let to_dyn x =
   let open Dyn.Encoder in
   match x with
@@ -35,6 +36,11 @@ let to_dyn x =
   | Stublibs -> constr "Stublibs" []
   | Man -> constr "Man" []
   | Misc -> constr "Misc" []
+
+module Key = struct type nonrec t = t let compare = compare let to_dyn = to_dyn end
+module O = Comparable.Make (Key)
+module Map = O.Map
+module Set = O.Set
 
 
 let to_string = function
@@ -93,3 +99,8 @@ let decode =
     ; ("man", Man)
     ; ("misc", Misc)
     ]
+
+
+let encode v =
+  let open Dune_lang.Encoder in
+  string (to_string v)

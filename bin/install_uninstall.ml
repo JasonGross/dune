@@ -160,12 +160,38 @@ module File_ops_real (W : Workspace) : File_operations = struct
           in
           Pp.render_ignore_tags ppf (Dune.Meta.pp meta.entries))
 
-  let process_dune_package ic =
+  let replace_sites ~(get_location:(Dune.Section.t -> Package.Name.t -> Stdune.Path.t)) dp =
+    match List.find_map dp ~f:(function
+      | Dune_lang.List [Atom (A "name");Atom (A name)] -> Some name
+      | _ -> None) with
+    | None -> dp
+    | Some name ->
+      List.map dp ~f:(function
+        | Dune_lang.List (((Atom (A "sites")) as sexp_sites) :: sites) ->
+          let sites =
+            List.map sites ~f:(function
+              | Dune_lang.List [(Atom (A section)) as section_sexp;_] ->
+                let path =
+                  get_location
+                    (Option.value_exn (Dune.Section.of_string section))
+                    (Import.Package.Name.of_string name)
+                in
+                let open Dune_lang.Encoder in
+                pair sexp string (section_sexp,Path.to_absolute_filename path)
+              | _ -> assert false)
+          in
+          Dune_lang.List (sexp_sites :: sites)
+        | x -> x)
+
+  let process_dune_package ~get_location ic =
     let lb = Lexing.from_channel ic in
     let dp =
       Dune_lang.Parser.parse ~mode:Many lb
       |> List.map ~f:Dune_lang.Ast.remove_locs
     in
+    (* replace sites with external path in the file *)
+    let dp = replace_sites ~get_location dp in
+    (* replace version if needed in the file *)
     if
       List.exists dp ~f:(function
         | Dune_lang.List (Atom (A "version") :: _) -> true
@@ -211,7 +237,7 @@ module File_ops_real (W : Workspace) : File_operations = struct
         match (special_file : Special_file.t option) with
         | Some META -> copy_special_file ~src ~package ~ic ~oc ~f:process_meta
         | Some Dune_package ->
-          copy_special_file ~src ~package ~ic ~oc ~f:process_dune_package
+          copy_special_file ~src ~package ~ic ~oc ~f:(process_dune_package ~get_location)
         | None ->
           Dune.Artifact_substitution.copy ~get_vcs
             ~get_location
