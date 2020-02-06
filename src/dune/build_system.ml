@@ -1643,8 +1643,20 @@ end = struct
                    source tree to be writable by the user, so we explicitly set
                    the user writable bit. *)
                 let chmod n = n lor 0o200 in
+                let get_location section package_name =
+                  (* check that we get the good path *)
+                  let context = Option.value_exn context in
+                  let install_dir = Config.local_install_dir ~context:context.name in
+                  let install_dir = Path.build install_dir in
+                  let paths =
+                    Install.Section.Paths.make ~package:package_name ~destdir:install_dir ()
+                  in
+                  Install.Section.Paths.get paths section
+                in
                 Artifact_substitution.copy_file () ~src:path ~dst:in_source_tree
-                  ~get_vcs:File_tree.nearest_vcs ~chmod ))
+                  ~get_vcs:File_tree.nearest_vcs
+                  ~get_location
+                  ~chmod ))
     in
     t.rule_done <- t.rule_done + 1
 

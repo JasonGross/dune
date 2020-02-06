@@ -9,7 +9,7 @@ module Dst : sig
 end
 
 module Section : sig
-  type t =
+  type t = Section.t =
     | Lib
     | Lib_root
     | Libexec
@@ -35,6 +35,8 @@ module Section : sig
 
   val decode : t Dune_lang.Decoder.t
 
+  val to_dyn : t -> Dyn.t
+
   (** [true] iff the executable bit should be set for files installed in this
       location. *)
   val should_set_executable_bit : t -> bool
@@ -53,6 +55,7 @@ module Section : sig
       -> t
 
     val install_path : t -> section -> Dst.t -> Path.t
+    val get: t -> section -> Path.t
   end
   with type section := t
 end

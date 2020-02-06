@@ -2050,6 +2050,24 @@ module Deprecated_library_name = struct
        { loc; project; old_public_name; new_public_name })
 end
 
+module Sites_locations = struct
+
+  type t =
+    { loc : Loc.t
+    ; module_ : Module_name.t
+    ; package : Package.Name.t
+    }
+
+  let decode =
+    fields
+      (let+ loc = loc
+       and+ module_ = field "module" Module_name.decode
+       and+ package =
+         field "package" Package.Name.decode
+       in
+       { loc; module_; package })
+end
+
 type Stanza.t +=
   | Library of Library.t
   | Foreign_library of Foreign.Library.t
@@ -2064,6 +2082,7 @@ type Stanza.t +=
   | Toplevel of Toplevel.t
   | External_variant of External_variant.t
   | Deprecated_library_name of Deprecated_library_name.t
+  | Sites_locations of Sites_locations.t
 
 module Stanzas = struct
   type t = Stanza.t list
@@ -2161,6 +2180,10 @@ module Stanzas = struct
       , let+ () = Dune_lang.Syntax.since Stanza.syntax (2, 0)
         and+ t = Deprecated_library_name.decode in
         [ Deprecated_library_name t ] )
+    ; ( "sites"
+      , let+ () = Dune_lang.Syntax.since Stanza.syntax (2, 2)
+        and+ t = Sites_locations.decode in
+        [ Sites_locations t ] )
     ]
 
   let () = Dune_project.Lang.register Stanza.syntax stanzas

@@ -1,0 +1,4 @@
+(library
+ (name sites_locations)
+ (public_name dune-sites-locations)
+)

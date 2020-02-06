@@ -425,6 +425,15 @@ module Deprecated_library_name : sig
     }
 end
 
+module Sites_locations : sig
+
+  type t =
+    { loc : Loc.t
+    ; module_ : Module_name.t
+    ; package : Package.Name.t
+    }
+end
+
 type Stanza.t +=
   | Library of Library.t
   | Foreign_library of Foreign.Library.t
@@ -439,6 +448,7 @@ type Stanza.t +=
   | Toplevel of Toplevel.t
   | External_variant of External_variant.t
   | Deprecated_library_name of Deprecated_library_name.t
+  | Sites_locations of Sites_locations.t
 
 val stanza_package : Stanza.t -> Package.t option
 

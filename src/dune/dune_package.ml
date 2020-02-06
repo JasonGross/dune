@@ -288,6 +288,8 @@ type t =
   { name : Package.Name.t
   ; entries : Entry.t Lib_name.Map.t
   ; version : string option
+  ; share : Path.t option
+  ; lib : Path.t option
   ; dir : Path.t
   }
 
@@ -295,6 +297,8 @@ let decode ~lang ~dir =
   let open Dune_lang.Decoder in
   let+ name = field "name" Package.Name.decode
   and+ version = field_o "version" string
+  and+ share = field_o "location_share" string
+  and+ lib = field_o "location_lib" string
   and+ entries = leftover_fields_as_sums (Entry.cstrs ~lang ~dir) in
   let entries =
     List.map entries ~f:(fun e ->
@@ -315,7 +319,10 @@ let decode ~lang ~dir =
             (Lib_name.to_string name)
         ]
   in
-  { name; version; entries; dir }
+  { name; version; entries; dir
+  ; share = Option.map ~f:Path.of_string share
+  ; lib = Option.map ~f:Path.of_string lib
+  }
 
 let () = Vfile.Lang.register Stanza.syntax ()
 
@@ -330,20 +337,22 @@ let prepend_version ~dune_version sexps =
   ]
   @ sexps
 
-let encode ~dune_version { entries; name; version; dir } =
+let encode ~dune_version { entries; name; version; dir; share; lib } =
   let list s = Dune_lang.List s in
-  let sexp = [ list [ Dune_lang.atom "name"; Package.Name.encode name ] ] in
-  let sexp =
-    match version with
+  let option sexp name conv = function
     | None -> sexp
-    | Some version ->
+    | Some v ->
       sexp
-      @ [ List
-            [ Dune_lang.atom "version"
-            ; Dune_lang.atom_or_quoted_string version
+      @ [ list
+            [ Dune_lang.atom name
+            ; Dune_lang.atom_or_quoted_string (conv v)
             ]
         ]
   in
+  let sexp = [ list [ Dune_lang.atom "name"; Package.Name.encode name ] ] in
+  let sexp = option sexp "version" (fun x -> x) version in
+  let sexp = option sexp "location_share" Path.to_absolute_filename share in
+  let sexp = option sexp "location_lib" Path.to_absolute_filename lib in
   let entries =
     Lib_name.Map.to_list entries
     |> List.map ~f:(fun (_name, e) ->
@@ -360,7 +369,7 @@ let encode ~dune_version { entries; name; version; dir } =
   in
   prepend_version ~dune_version (List.concat [ sexp; entries ])
 
-let to_dyn { entries; name; version; dir } =
+let to_dyn { entries; name; version; dir; share; lib } =
   let open Dyn.Encoder in
   record
     [ ( "entries"
@@ -368,6 +377,8 @@ let to_dyn { entries; name; version; dir } =
     ; ("name", Package.Name.to_dyn name)
     ; ("version", option string version)
     ; ("dir", Path.to_dyn dir)
+    ; ("share", option Path.to_dyn share)
+    ; ("lib", option Path.to_dyn lib)
     ]
 
 module Or_meta = struct

@@ -12,6 +12,7 @@ module Env_tree : sig
   type t
 
   val get_node : t -> dir:Path.Build.t -> Env_node.t
+  val get_context_env : t -> Env.t
 
   val create :
        context:Context.t
@@ -21,6 +22,7 @@ module Env_tree : sig
     -> stanzas_per_dir:Stanza.t list Dir_with_dune.t Path.Build.Map.t
     -> root_expander:Expander.t
     -> bin_artifacts:Artifacts.Bin.t
+    -> context_env:Env.t
     -> t
 
   val bin_artifacts_host : t -> dir:Path.Build.t -> Artifacts.Bin.t
@@ -29,6 +31,7 @@ module Env_tree : sig
 end = struct
   type t =
     { context : Context.t
+    ; context_env : Env.t (** context env with additional variables *)
     ; scopes : Scope.DB.t
     ; default_env : Env_node.t Memo.Lazy.t
     ; stanzas_per_dir : Stanza.t list Dir_with_dune.t Path.Build.Map.t
@@ -39,6 +42,7 @@ end = struct
     }
 
   let get_node t ~dir = t.get_node dir
+  let get_context_env t = t.context_env
 
   let bin_artifacts_host t ~dir =
     let bin_artifacts t ~dir = get_node t ~dir |> Env_node.bin_artifacts in
@@ -115,7 +119,7 @@ end = struct
     in
     Env_node.make ~dir ~scope ~config_stanza ~inherit_from:(Some inherit_from)
       ~profile:t.context.profile ~expander ~expander_for_artifacts
-      ~default_context_flags ~default_env:t.context.env
+      ~default_context_flags ~default_env:t.context_env
       ~default_bin_artifacts:t.bin_artifacts
 
   (* Here we jump through some hoops to construct [t] as well as create a
@@ -130,7 +134,8 @@ end = struct
      recursive module [Rec]. Since recursive let-modules are not allowed either,
      we need to also wrap [Rec] inside a non-recursive module [Non_rec]. *)
   let create ~context ~host_env_tree ~scopes ~default_env ~stanzas_per_dir
-      ~root_expander ~bin_artifacts =
+        ~root_expander ~bin_artifacts ~context_env =
+
     let module Non_rec = struct
       module rec Rec : sig
         val env_tree : unit -> t
@@ -139,6 +144,7 @@ end = struct
       end = struct
         let env_tree =
           { context
+          ; context_env
           ; scopes
           ; default_env
           ; stanzas_per_dir
@@ -194,6 +200,8 @@ type t =
   }
 
 let context t = t.context
+
+let context_env t = Env_tree.get_context_env t.env_tree
 
 let stanzas t = t.stanzas
 
@@ -467,6 +475,46 @@ let create ~(context : Context.t) ?host ~projects ~packages ~stanzas
       ~context ~lib_artifacts:artifacts.public_libs
       ~bin_artifacts_host:artifacts_host.bin
   in
+  let dune_dir_locations_var : Stdune.Env.Var.t = "DUNE_DIR_LOCATIONS" in
+    let env_dune_dir_locations =
+      let install_dir = Config.local_install_dir ~context:context.Context.name in
+      let install_dir = Path.build install_dir in
+      let v = Option.value (Stdune.Env.get context.env dune_dir_locations_var)
+                ~default:"" in
+      let v = Package.Name.Map.foldi ~init:v packages
+                ~f:(fun package_name package init ->
+                  let sections =
+                    Package.Name.Map.fold ~init:Install.Section.Set.empty
+                      package.Package.sites_locations
+                      ~f:(fun section acc -> Install.Section.Set.add acc section )
+                  in
+                  let paths =
+                    Install.Section.Paths.make ~package:package_name ~destdir:install_dir ()
+                  in
+                  Install.Section.Set.fold sections ~init
+                    ~f:(fun section acc ->
+                      sprintf "%s%c%s%c%s%s"
+                        (Package.Name.to_string package_name)
+                        Stdune.Bin.path_sep
+                        (Section.to_string section)
+                        Stdune.Bin.path_sep
+                        (Path.to_absolute_filename (Install.Section.Paths.get paths section))
+                        (if String.is_empty acc then acc
+                         else sprintf "%c%s" Stdune.Bin.path_sep acc)
+                    )
+                )
+      in
+      v
+    in
+    let context_env =
+      if String.is_empty env_dune_dir_locations
+      then context.env
+      else
+        Stdune.Env.add context.env
+          ~var:dune_dir_locations_var
+          ~value:env_dune_dir_locations
+    in
+
   let default_env =
     Memo.lazy_ (fun () ->
         let make ~inherit_from ~config_stanza =
@@ -481,7 +529,7 @@ let create ~(context : Context.t) ?host ~projects ~packages ~stanzas
           let expander = Memo.Lazy.of_val root_expander in
           Env_node.make ~dir ~scope ~inherit_from ~config_stanza
             ~profile:context.profile ~expander ~expander_for_artifacts
-            ~default_context_flags ~default_env:context.env
+            ~default_context_flags ~default_env:context_env
             ~default_bin_artifacts:artifacts.bin
         in
         make ~config_stanza:context.env_nodes.context
@@ -494,7 +542,7 @@ let create ~(context : Context.t) ?host ~projects ~packages ~stanzas
   let env_tree =
     Env_tree.create ~context ~scopes ~default_env ~stanzas_per_dir
       ~host_env_tree:(Option.map host ~f:(fun x -> x.env_tree))
-      ~root_expander ~bin_artifacts:artifacts.bin
+      ~root_expander ~bin_artifacts:artifacts.bin ~context_env
   in
   let dir_status_db = Dir_status.DB.make ~stanzas_per_dir in
   let projects_by_key =

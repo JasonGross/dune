@@ -68,6 +68,7 @@ module type File_operations = sig
     -> executable:bool
     -> special_file:Special_file.t option
     -> package:Package.Name.t
+    -> get_location:(Dune.Section.t -> Package.Name.t -> Stdune.Path.t)
     -> unit Fiber.t
 
   val mkdir_p : Path.t -> unit
@@ -82,7 +83,7 @@ module type Workspace = sig
 end
 
 module File_ops_dry_run : File_operations = struct
-  let copy_file ~src ~dst ~executable ~special_file:_ ~package:_ =
+  let copy_file ~src ~dst ~executable ~special_file:_ ~package:_ ~get_location:_ =
     Format.printf "Copying %s to %s (executable: %b)\n"
       (Path.to_string_maybe_quoted src)
       (Path.to_string_maybe_quoted dst)
@@ -119,7 +120,7 @@ module File_ops_real (W : Workspace) : File_operations = struct
     match f ic with
     | exception _ ->
       User_warning.emit ~loc:(Loc.in_file src)
-        [ Pp.text "Failed to parse file, not adding version information." ];
+        [ Pp.text "Failed to parse file, not adding version and locations information." ];
       plain_copy ()
     | No_version_needed -> plain_copy ()
     | Need_version print -> (
@@ -192,7 +193,7 @@ module File_ops_real (W : Workspace) : File_operations = struct
               Format.pp_print_cut ppf ());
           Format.pp_close_box ppf ())
 
-  let copy_file ~src ~dst ~executable ~special_file ~package =
+  let copy_file ~src ~dst ~executable ~special_file ~package ~get_location =
     let chmod =
       if executable then
         fun _ ->
@@ -212,7 +213,9 @@ module File_ops_real (W : Workspace) : File_operations = struct
         | Some Dune_package ->
           copy_special_file ~src ~package ~ic ~oc ~f:process_dune_package
         | None ->
-          Dune.Artifact_substitution.copy ~get_vcs ~input:(input ic)
+          Dune.Artifact_substitution.copy ~get_vcs
+            ~get_location
+            ~input:(input ic)
             ~output:(output oc))
 
   let remove_if_exists dst =
@@ -454,8 +457,15 @@ let install_uninstall ~what =
                           Install.Section.should_set_executable_bit
                             entry.section
                         in
+                        let get_location section package =
+                          let paths =
+                            Install.Section.Paths.make ~package ~destdir:prefix ?libdir
+                              ?mandir ()
+                          in
+                          Install.Section.Paths.get paths section
+                        in
                         Ops.copy_file ~src:entry.src ~dst ~executable
-                          ~special_file ~package
+                          ~special_file ~package ~get_location
                       ) else (
                         Ops.remove_if_exists dst;
                         files_deleted_in := Path.Set.add !files_deleted_in dir;

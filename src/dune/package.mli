@@ -113,6 +113,7 @@ type t =
   ; has_opam_file : bool
   ; tags : string list
   ; deprecated_package_names : Loc.t Name.Map.t
+  ; sites_locations: Section.t Name.Map.t
   }
 
 val file : dir:Path.t -> name:Name.t -> Path.t

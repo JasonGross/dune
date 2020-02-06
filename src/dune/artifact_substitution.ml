@@ -30,13 +30,16 @@ open Import
 
 type t =
   | Vcs_describe of Path.Source.t
+  | Location of Section.t * Package.Name.t
   | Repeat of int * string
 
 let to_dyn = function
   | Vcs_describe p -> Dyn.Variant ("Vcs_describe", [ Path.Source.to_dyn p ])
+  | Location (kind,lib_name) ->
+    Dyn.Variant ("Location", [ Section.to_dyn kind; Package.Name.to_dyn lib_name ])
   | Repeat (n, s) -> Dyn.Variant ("Repeat", [ Int n; String s ])
 
-let eval t ~get_vcs =
+let eval t ~get_vcs ~get_location =
   match t with
   | Repeat (n, s) ->
     Fiber.return (Array.make n s |> Array.to_list |> String.concat ~sep:"")
@@ -44,6 +47,8 @@ let eval t ~get_vcs =
     match get_vcs p with
     | None -> Fiber.return ""
     | Some vcs -> Vcs.describe vcs )
+  | Location (name,lib_name) ->
+    Fiber.return (Path.to_absolute_filename (get_location name lib_name))
 
 let encode_replacement ~len ~repl:s =
   let repl = sprintf "=%u:%s" (String.length s) s in
@@ -65,6 +70,10 @@ let encode ?(min_len = 0) t =
       | Vcs_describe p ->
         let s = Path.Source.to_string p in
         sprintf "vcs-describe:%d:%s" (String.length s) s
+      | Location (kind,name) ->
+        let name = Package.Name.to_string name in
+        sprintf "location:%s:%d:%s"
+          (Section.to_string kind) (String.length name) name
       | Repeat (n, s) -> sprintf "repeat:%d:%d:%s" n (String.length s) s )
   in
   let len =
@@ -127,6 +136,10 @@ let decode s =
     | "vcs-describe" :: rest ->
       let path = Path.Source.of_string (read_string_payload rest) in
       Vcs_describe path
+    | "location" :: kind :: rest ->
+      let name = Package.Name.of_string (read_string_payload rest) in
+      let kind = Option.value_exn (Section.of_string kind) in
+      Location(kind, name)
     | "repeat" :: repeat :: rest ->
       Repeat (parse_int repeat, read_string_payload rest)
     | _ -> fail ()
@@ -291,7 +304,7 @@ let buf_len = max_len
 
 let buf = Bytes.create buf_len
 
-let copy ~get_vcs ~input ~output =
+let copy ~get_vcs ~get_location ~input ~output =
   let open Fiber.O in
   (* The copy algorithm works as follow:
 
@@ -330,7 +343,7 @@ let copy ~get_vcs ~input ~output =
       let placeholder = Bytes.sub_string buf ~pos:placeholder_start ~len in
       match decode placeholder with
       | Some t ->
-        let* s = eval t ~get_vcs in
+        let* s = eval t ~get_vcs ~get_location in
         let s = encode_replacement ~len ~repl:s in
         output (Bytes.unsafe_of_string s) 0 len;
         let pos = placeholder_start + len in
@@ -379,10 +392,10 @@ let copy ~get_vcs ~input ~output =
   | 0 -> Fiber.return ()
   | n -> loop Scan0 ~beginning_of_data:0 ~pos:0 ~end_of_data:n
 
-let copy_file ~get_vcs ?chmod ~src ~dst () =
+let copy_file ~get_vcs ~get_location ?chmod ~src ~dst () =
   let ic, oc = Io.setup_copy ?chmod ~src ~dst () in
   Fiber.finalize
     ~finally:(fun () ->
       Io.close_both (ic, oc);
       Fiber.return ())
-    (fun () -> copy ~get_vcs ~input:(input ic) ~output:(output oc))
+    (fun () -> copy ~get_vcs ~get_location ~input:(input ic) ~output:(output oc))
