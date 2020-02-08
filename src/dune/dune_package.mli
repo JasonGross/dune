@@ -63,6 +63,7 @@ type t =
   ; entries : Entry.t Lib_name.Map.t
   ; version : string option
   ; sites : Path.t Section.Map.t
+  ; sites2 : Section.t Package.Name.Map.t
   ; dir : Path.t
   }
 

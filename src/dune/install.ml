@@ -8,6 +8,8 @@ module Dst : sig
 
   val to_string : t -> string
 
+  val add_prefix: string -> t -> t
+
   val to_install_file :
     t -> src_basename:string -> section:Section.t -> string option
 
@@ -23,6 +25,8 @@ end = struct
   type t = string
 
   let to_string t = t
+
+  let add_prefix p t = Filename.concat p t
 
   let explicit t = t
 
@@ -67,43 +71,22 @@ end
 
 module Section = struct
   include Section
-  include Comparable.Make (Section)
-
-  let all =
-    Set.of_list
-      [ Lib
-      ; Lib_root
-      ; Libexec
-      ; Libexec_root
-      ; Bin
-      ; Sbin
-      ; Toplevel
-      ; Share
-      ; Share_root
-      ; Etc
-      ; Doc
-      ; Stublibs
-      ; Man
-      ; Misc
-      ]
-
-  let should_set_executable_bit = function
+  type t = Section.t =
     | Lib
     | Lib_root
+    | Libexec
+    | Libexec_root
+    | Bin
+    | Sbin
     | Toplevel
     | Share
     | Share_root
     | Etc
     | Doc
+    | Stublibs
     | Man
-    | Misc ->
-      false
-    | Libexec
-    | Libexec_root
-    | Bin
-    | Sbin
-    | Stublibs ->
-      true
+    | Misc
+
 
   module Paths = struct
     type t =
@@ -169,11 +152,53 @@ module Section = struct
       let paths =
         make ~package:package_name ~destdir:install_dir ()
       in
-      get paths section
+      (get paths section)
 
     let install_path t section p =
       Path.relative (get t section) (Dst.to_string p)
   end
+end
+
+module SectionWithSite = struct
+  type t =
+    | Section of Section.t
+    | Site of { pkg: Package.Name.t; site: Package.Name.t }
+
+  (* let compare : t -> t -> Ordering.t = Poly.compare *)
+
+  let to_dyn x =
+    let open Dyn.Encoder in
+    match x with
+    | Section s -> constr "Section" [ Section.to_dyn s ]
+    | Site { pkg; site } -> constr "Section" [ Package.Name.to_dyn pkg;
+                                                 Package.Name.to_dyn site ]
+
+  let to_string = function
+    | Section s -> Section.to_string s
+    | Site {pkg;site} -> sprintf "(site %s %s)"
+                             (Package.Name.to_string pkg) (Package.Name.to_string site)
+
+
+  let decode =
+    let open Dune_lang.Decoder in
+    sum
+      [ ("lib", return (Section Lib))
+      ; ("lib_root", return (Section Lib_root))
+      ; ("libexec", return (Section Libexec))
+      ; ("libexec_root", return (Section Libexec_root))
+      ; ("bin", return (Section Bin))
+      ; ("sbin", return (Section Sbin))
+      ; ("toplevel", return (Section Toplevel))
+      ; ("share", return (Section Share))
+      ; ("share_root", return (Section Share_root))
+      ; ("etc", return (Section Etc))
+      ; ("doc", return (Section Doc))
+      ; ("stublibs", return (Section Stublibs))
+      ; ("man", return (Section Man))
+      ; ("misc", return (Section Misc))
+      ; ("site", pair Package.Name.decode Package.Name.decode
+         >>| (fun (pkg,site) -> Site {pkg;site}))
+      ]
 end
 
 module Entry = struct
@@ -247,6 +272,33 @@ module Entry = struct
     in
     { src; dst; section }
 
+  let make_with_site section ?dst get_section src =
+    match section with
+    | SectionWithSite.Section section ->
+      make section ?dst src
+    | Site {pkg;site} ->
+      let section = get_section ~pkg ~site in
+      let dst =
+        adjust_dst ~src:(Expanded (Path.to_string (Path.build src))) ~dst ~section
+      in
+      let dst = Dst.add_prefix (Package.Name.to_string site) dst in
+      let dst_with_pkg_prefix = Dst.add_prefix (Package.Name.to_string pkg) dst in
+      let (section:Section.t),dst = match section with
+        | Lib -> Lib_root, dst_with_pkg_prefix
+        | Libexec -> Libexec_root, dst_with_pkg_prefix
+        | Share -> Share_root, dst_with_pkg_prefix
+        | Etc | Doc -> User_error.raise [ Pp.textf "Can't have site in etc and doc for opam" ]
+        | Lib_root
+        | Libexec_root | Bin | Sbin
+        | Toplevel | Share_root
+        | Stublibs | Man
+        | Misc -> section, dst
+      in
+      { src
+      ; dst
+      ; section
+      }
+
   let set_src t src = { t with src }
 
   let relative_installed_path t ~paths =
@@ -271,6 +323,15 @@ module Entry = struct
     }
 end
 
+module EntryWithSite = struct
+  type 'src t =
+    { src : 'src
+    ; dst : Dst.t
+    ; section : SectionWithSite.t
+    }
+
+end
+
 let files entries =
   List.fold_left entries ~init:Path.Set.empty
     ~f:(fun acc (entry : Path.Build.t Entry.t) ->
@@ -288,15 +349,16 @@ let gen_install_file entries =
       pr "%s: [" (Section.to_string section);
       List.sort ~compare:Entry.compare entries
       |> List.iter ~f:(fun (e : Path.Build.t Entry.t) ->
-             let src = Path.to_string (Path.build e.src) in
-             match
-               Dst.to_install_file
-                 ~src_basename:(Path.Build.basename e.src)
-                 ~section:e.section e.dst
-             with
-             | None -> pr "  %S" src
-             | Some dst -> pr "  %S {%S}" src dst);
-      pr "]");
+        let src = Path.to_string (Path.build e.src) in
+        match
+          Dst.to_install_file
+            ~src_basename:(Path.Build.basename e.src)
+            ~section:e.section e.dst
+        with
+        | None -> pr "  %S" src
+        | Some dst -> pr "  %S {%S}" src dst);
+      pr "]"
+  );
   Buffer.contents buf
 
 let pos_of_opam_value : OpamParserTypes.value -> OpamParserTypes.pos = function

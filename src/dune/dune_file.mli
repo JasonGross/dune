@@ -243,9 +243,18 @@ module Library : sig
     -> Lib_info.local
 end
 
+module Plugin : sig
+    type t = {
+    package: Package.t;
+    name: Package.Name.t;
+    libraries: (Loc.t * Lib_name.t) list;
+    site: (Loc.t * (Package.Name.t * Package.Name.t));
+  }
+end
+
 module Install_conf : sig
   type t =
-    { section : Install.Section.t
+    { section : Install.SectionWithSite.t
     ; files : File_binding.Unexpanded.t list
     ; package : Package.t
     }
@@ -449,6 +458,7 @@ type Stanza.t +=
   | External_variant of External_variant.t
   | Deprecated_library_name of Deprecated_library_name.t
   | Sites_locations of Sites_locations.t
+  | Plugin of Plugin.t
 
 val stanza_package : Stanza.t -> Package.t option
 

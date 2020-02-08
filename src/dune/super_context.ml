@@ -227,6 +227,36 @@ let to_dyn t = Context.to_dyn t.context
 
 let host t = Option.value t.host ~default:t
 
+let get_site_of_packages t ~pkg ~site =
+  match Package.Name.Map.find t.packages pkg with
+  | Some p -> begin
+      match Package.Name.Map.find p.sites_locations site with
+      | Some section -> section
+      | None -> User_error.raise
+                  [ Pp.textf "Package %s doesn't define a site %s"
+                      (Package.Name.to_string pkg)
+                      (Package.Name.to_string site)
+                  ]
+    end
+  | None ->
+    match Findlib.find_root_package t.context.findlib pkg with
+    | Ok p -> begin
+        match Package.Name.Map.find p.sites2 site with
+        | Some section -> section
+        | None -> User_error.raise
+                    [ Pp.textf "Package %s doesn't define a site %s"
+                        (Package.Name.to_string pkg)
+                        (Package.Name.to_string site)
+                    ]
+      end
+    | Error Not_found ->
+      User_error.raise
+        [ Pp.textf "The package %s is not found"
+            (Package.Name.to_string pkg)
+        ]
+    | Error (Invalid_dune_package exn) ->
+      Exn.raise exn
+
 let lib_entries_of_package t pkg_name =
   Package.Name.Map.find t.lib_entries_by_package pkg_name
   |> Option.value ~default:[]
@@ -405,10 +435,10 @@ let get_installed_binaries stanzas ~(context : Context.t) =
               acc)
       in
       match (stanza : Stanza.t) with
-      | Dune_file.Install { section = Bin; files; _ } ->
+      | Dune_file.Install { section = Section Bin; files; _ } ->
         binaries_from_install files
       | Dune_file.Executables
-          ({ install_conf = Some { section = Bin; files; _ }; _ } as exes) ->
+          ({ install_conf = Some { section = Section Bin; files; _ }; _ } as exes) ->
         let compile_info =
           let project = Scope.project d.scope in
           let dune_version = Dune_project.dune_version project in

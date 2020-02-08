@@ -8,3 +8,4 @@ val gen :
   -> ?add_directory_entry:bool
   -> Super_context.Lib_entry.t list
   -> Meta.t
+(** Generate the meta for a package containing some libraries *)

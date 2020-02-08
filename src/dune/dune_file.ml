@@ -1048,16 +1048,33 @@ module Library = struct
       ~special_builtin_support ~exit_module
 end
 
+module Plugin = struct
+  type t = {
+    package: Package.t;
+    name: Package.Name.t;
+    libraries: (Loc.t * Lib_name.t) list;
+    site: (Loc.t * (Package.Name.t * Package.Name.t));
+  }
+
+  let decode =
+    fields
+      (let+ name = field "name" Package.Name.decode
+       and+ libraries = field "libraries" (repeat (located Lib_name.decode))
+       and+ site =  field "site" (located (pair Package.Name.decode Package.Name.decode))
+       and+ package = Pkg.field "package" in
+       { name; libraries; site; package })
+end
+
 module Install_conf = struct
   type t =
-    { section : Install.Section.t
+    { section : Install.SectionWithSite.t
     ; files : File_binding.Unexpanded.t list
     ; package : Package.t
     }
 
   let decode =
     fields
-      (let+ section = field "section" Install.Section.decode
+      (let+ section = field "section" Install.SectionWithSite.decode
        and+ files = field "files" File_binding.Unexpanded.L.decode
        and+ package = Pkg.field "install" in
        { section; files; package })
@@ -1244,7 +1261,7 @@ module Executables = struct
                       ~dst:(locp, pub)))
             |> List.filter_opt
           in
-          { Install_conf.section = Bin; files; package })
+          { Install_conf.section = Section Bin; files; package })
   end
 
   module Link_mode = struct
@@ -2083,6 +2100,7 @@ type Stanza.t +=
   | External_variant of External_variant.t
   | Deprecated_library_name of Deprecated_library_name.t
   | Sites_locations of Sites_locations.t
+  | Plugin of Plugin.t
 
 module Stanzas = struct
   type t = Stanza.t list
@@ -2184,6 +2202,10 @@ module Stanzas = struct
       , let+ () = Dune_lang.Syntax.since Stanza.syntax (2, 2)
         and+ t = Sites_locations.decode in
         [ Sites_locations t ] )
+    ; ( "plugin"
+      , let+ () = Dune_lang.Syntax.since Stanza.syntax (2, 2)
+        and+ t = Plugin.decode in
+        [ Plugin t ] )
     ]
 
   let () = Dune_project.Lang.register Stanza.syntax stanzas
@@ -2269,6 +2291,7 @@ let stanza_package = function
   | Alias { package = Some package; _ }
   | Rule { package = Some package; _ }
   | Install { package; _ }
+  | Plugin { package; _ }
   | Executables { install_conf = Some { package; _ }; _ }
   | Documentation { package; _ }
   | Tests { package = Some package; _ } ->

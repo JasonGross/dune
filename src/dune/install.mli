@@ -27,8 +27,6 @@ module Section : sig
 
   module Set : Set.S with type elt = t
 
-  val all : Set.t
-
   val to_string : t -> string
 
   val parse_string : string -> (t, string) Result.t
@@ -36,10 +34,6 @@ module Section : sig
   val decode : t Dune_lang.Decoder.t
 
   val to_dyn : t -> Dyn.t
-
-  (** [true] iff the executable bit should be set for files installed in this
-      location. *)
-  val should_set_executable_bit : t -> bool
 
   module Paths : sig
     type section = t
@@ -62,6 +56,22 @@ module Section : sig
   with type section := t
 end
 
+module SectionWithSite : sig
+
+  type t =
+    | Section of Section.t
+    | Site of { pkg: Package.Name.t; site: Package.Name.t }
+
+  val to_string : t -> string
+
+  (* val parse_string : string -> (t, string) Result.t *)
+
+  val decode : t Dune_lang.Decoder.t
+
+  val to_dyn : t -> Dyn.t
+
+end
+
 module Entry : sig
   type 'src t = private
     { src : 'src
@@ -75,7 +85,12 @@ module Entry : sig
     -> section:Section.t
     -> Dst.t
 
-  val make : Section.t -> ?dst:string -> Path.Build.t -> Path.Build.t t
+  val make : Section.t -> ?dst:string
+    -> Path.Build.t -> Path.Build.t t
+
+  val make_with_site : SectionWithSite.t -> ?dst:string
+    -> (pkg:Package.Name.t -> site:Package.Name.t ->  Section.t)
+    -> Path.Build.t -> Path.Build.t t
 
   val set_src : _ t -> 'src -> 'src t
 
@@ -84,6 +99,16 @@ module Entry : sig
   val add_install_prefix :
     Path.Build.t t -> paths:Section.Paths.t -> prefix:Path.t -> Path.Build.t t
 end
+
+
+module EntryWithSite : sig
+  type 'src t =
+    { src : 'src
+    ; dst : Dst.t
+    ; section : SectionWithSite.t
+    }
+end
+
 
 val files : Path.Build.t Entry.t list -> Path.Set.t
 

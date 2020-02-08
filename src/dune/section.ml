@@ -104,3 +104,39 @@ let decode =
 let encode v =
   let open Dune_lang.Encoder in
   string (to_string v)
+
+let all =
+  Set.of_list
+    [ Lib
+    ; Lib_root
+    ; Libexec
+    ; Libexec_root
+    ; Bin
+    ; Sbin
+    ; Toplevel
+    ; Share
+    ; Share_root
+    ; Etc
+    ; Doc
+    ; Stublibs
+    ; Man
+    ; Misc
+    ]
+
+let should_set_executable_bit = function
+  | Lib
+  | Lib_root
+  | Toplevel
+  | Share
+  | Share_root
+  | Etc
+  | Doc
+  | Man
+  | Misc ->
+    false
+  | Libexec
+  | Libexec_root
+  | Bin
+  | Sbin
+  | Stublibs ->
+    true

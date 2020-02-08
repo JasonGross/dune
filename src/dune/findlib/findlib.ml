@@ -164,6 +164,7 @@ let builtin_for_dune : Dune_package.t =
   ; version = None
   ; dir = Path.root
   ; sites = Section.Map.empty
+  ; sites2 = Opam_package.Name.Map.empty
   }
 
 type db =
@@ -430,6 +431,7 @@ end = struct
     ; entries
     ; dir
     ; sites = Section.Map.empty
+    ; sites2 = Opam_package.Name.Map.empty
     }
 
   let load_and_convert db ~dir ~meta_file ~name =

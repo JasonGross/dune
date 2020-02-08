@@ -18,6 +18,7 @@ module Dep = Dune.Dep
 module Action_to_sh = Dune.Action_to_sh
 module Dpath = Dune.Dpath
 module Install = Dune.Install
+module Section = Dune.Section
 module Watermarks = Dune.Watermarks
 module Promotion = Dune.Promotion
 module Colors = Dune.Colors

@@ -267,13 +267,13 @@ end
 module Sections = struct
   type t =
     | All
-    | Only of Install.Section.Set.t
+    | Only of Section.Set.t
 
-  let sections_conv : Install.Section.t list Cmdliner.Arg.converter =
+  let sections_conv : Section.t list Cmdliner.Arg.converter =
     let all =
-      Install.Section.all |> Install.Section.Set.to_list
+      Section.all |> Section.Set.to_list
       |> List.map ~f:(fun section ->
-             (Install.Section.to_string section, section))
+             (Section.to_string section, section))
     in
     Arg.list ~sep:',' (Arg.enum all)
 
@@ -285,12 +285,12 @@ module Sections = struct
     in
     match sections with
     | None -> All
-    | Some sections -> Only (Install.Section.Set.of_list sections)
+    | Some sections -> Only (Section.Set.of_list sections)
 
   let should_install t section =
     match t with
     | All -> true
-    | Only set -> Install.Section.Set.mem set section
+    | Only set -> Section.Set.mem set section
 end
 
 let file_operations ~dry_run ~workspace : (module File_operations) =
@@ -480,7 +480,7 @@ let install_uninstall ~what =
                           (Path.to_string_maybe_quoted dst);
                         Ops.mkdir_p dir;
                         let executable =
-                          Install.Section.should_set_executable_bit
+                          Section.should_set_executable_bit
                             entry.section
                         in
                         let get_location section package =
