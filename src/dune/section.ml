@@ -140,3 +140,43 @@ let should_set_executable_bit = function
   | Sbin
   | Stublibs ->
     true
+
+module Site = struct
+  module T =
+    Interned.Make
+      (struct
+        let initial_size = 16
+
+        let resize_policy = Interned.Conservative
+
+        let order = Interned.Natural
+      end)
+      ()
+
+  include T
+
+    include (
+    Stringlike.Make (struct
+      type t = T.t
+
+      let to_string = T.to_string
+
+      let module_ = "Section.Site"
+
+      let description = "site name"
+
+      let description_of_valid_string = None
+
+      let of_string_opt s =
+        (* TODO verify no dots or spaces *)
+        if s = "" then
+          None
+        else
+          Some (make s)
+    end) :
+      Stringlike_intf.S with type t := t )
+
+  let pp fmt t = Format.pp_print_string fmt (to_string t)
+
+  module Infix = Comparator.Operators (T)
+end

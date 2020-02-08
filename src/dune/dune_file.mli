@@ -248,7 +248,7 @@ module Plugin : sig
     package: Package.t;
     name: Package.Name.t;
     libraries: (Loc.t * Lib_name.t) list;
-    site: (Loc.t * (Package.Name.t * Package.Name.t));
+    site: (Loc.t * (Package.Name.t * Section.Site.t));
   }
 end
 
@@ -434,13 +434,16 @@ module Deprecated_library_name : sig
     }
 end
 
-module Sites_locations : sig
+module Generate_module : sig
 
   type t =
     { loc : Loc.t
     ; module_ : Module_name.t
-    ; package : Package.Name.t
+    ; ocamlpath: bool
+    ; sites : (Loc.t * Package.Name.t) list
+    ; plugins : (Loc.t * (Package.Name.t * (Loc.t * Section.Site.t))) list
     }
+
 end
 
 type Stanza.t +=
@@ -457,7 +460,7 @@ type Stanza.t +=
   | Toplevel of Toplevel.t
   | External_variant of External_variant.t
   | Deprecated_library_name of Deprecated_library_name.t
-  | Sites_locations of Sites_locations.t
+  | Generate_module of Generate_module.t
   | Plugin of Plugin.t
 
 val stanza_package : Stanza.t -> Package.t option

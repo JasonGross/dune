@@ -31,15 +31,17 @@ open Import
 type t =
   | Vcs_describe of Path.Source.t
   | Location of Section.t * Package.Name.t
+  | LocalLibPath
   | Repeat of int * string
 
 let to_dyn = function
   | Vcs_describe p -> Dyn.Variant ("Vcs_describe", [ Path.Source.to_dyn p ])
   | Location (kind,lib_name) ->
     Dyn.Variant ("Location", [ Section.to_dyn kind; Package.Name.to_dyn lib_name ])
+  | LocalLibPath  -> Dyn.Variant ("LocalLibPath",[])
   | Repeat (n, s) -> Dyn.Variant ("Repeat", [ Int n; String s ])
 
-let eval t ~get_vcs ~get_location =
+let eval t ~get_vcs ~get_location ~get_localLibPath =
   match t with
   | Repeat (n, s) ->
     Fiber.return (Array.make n s |> Array.to_list |> String.concat ~sep:"")
@@ -49,6 +51,13 @@ let eval t ~get_vcs ~get_location =
     | Some vcs -> Vcs.describe vcs )
   | Location (name,lib_name) ->
     Fiber.return (Path.to_absolute_filename (get_location name lib_name))
+  | LocalLibPath ->
+    Fiber.return
+      (Option.value ~default:""
+         (let open Option.O in
+          let+ get = get_localLibPath in
+          let dir = get () in
+          Path.to_absolute_filename dir))
 
 let encode_replacement ~len ~repl:s =
   let repl = sprintf "=%u:%s" (String.length s) s in
@@ -74,6 +83,8 @@ let encode ?(min_len = 0) t =
         let name = Package.Name.to_string name in
         sprintf "location:%s:%d:%s"
           (Section.to_string kind) (String.length name) name
+      | LocalLibPath ->
+        sprintf "locallibpath:"
       | Repeat (n, s) -> sprintf "repeat:%d:%d:%s" n (String.length s) s )
   in
   let len =
@@ -140,6 +151,8 @@ let decode s =
       let name = Package.Name.of_string (read_string_payload rest) in
       let kind = Option.value_exn (Section.of_string kind) in
       Location(kind, name)
+    | "locallibpath" :: _ ->
+      LocalLibPath
     | "repeat" :: repeat :: rest ->
       Repeat (parse_int repeat, read_string_payload rest)
     | _ -> fail ()
@@ -304,7 +317,7 @@ let buf_len = max_len
 
 let buf = Bytes.create buf_len
 
-let copy ~get_vcs ~get_location ~input ~output =
+let copy ~get_vcs ~get_location ~get_localLibPath ~input ~output =
   let open Fiber.O in
   (* The copy algorithm works as follow:
 
@@ -343,7 +356,7 @@ let copy ~get_vcs ~get_location ~input ~output =
       let placeholder = Bytes.sub_string buf ~pos:placeholder_start ~len in
       match decode placeholder with
       | Some t ->
-        let* s = eval t ~get_vcs ~get_location in
+        let* s = eval t ~get_vcs ~get_location ~get_localLibPath in
         let s = encode_replacement ~len ~repl:s in
         output (Bytes.unsafe_of_string s) 0 len;
         let pos = placeholder_start + len in
@@ -392,10 +405,10 @@ let copy ~get_vcs ~get_location ~input ~output =
   | 0 -> Fiber.return ()
   | n -> loop Scan0 ~beginning_of_data:0 ~pos:0 ~end_of_data:n
 
-let copy_file ~get_vcs ~get_location ?chmod ~src ~dst () =
+let copy_file ~get_vcs ~get_location ~get_localLibPath ?chmod ~src ~dst () =
   let ic, oc = Io.setup_copy ?chmod ~src ~dst () in
   Fiber.finalize
     ~finally:(fun () ->
       Io.close_both (ic, oc);
       Fiber.return ())
-    (fun () -> copy ~get_vcs ~get_location ~input:(input ic) ~output:(output oc))
+    (fun () -> copy ~get_vcs ~get_location ~get_localLibPath ~input:(input ic) ~output:(output oc))

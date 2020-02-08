@@ -3,42 +3,42 @@ module V1 = struct
     type t = string
   end
 
-  module Section = struct
-    type t =
-      | Lib
-      | Lib_root
-      | Libexec
-      | Libexec_root
-      | Bin
-      | Sbin
-      | Toplevel
-      | Share
-      | Share_root
-      | Etc
-      | Doc
-      | Stublibs
-      | Man
-      | Misc
-
-    let of_string = function
-      | "lib" -> Lib
-      | "lib_root" -> Lib_root
-      | "libexec" -> Libexec
-      | "libexec_root" -> Libexec_root
-      | "bin" -> Bin
-      | "sbin" -> Sbin
-      | "toplevel" -> Toplevel
-      | "share" -> Share
-      | "share_root" -> Share_root
-      | "etc" -> Etc
-      | "doc" -> Doc
-      | "stublibs" -> Stublibs
-      | "man" -> Man
-      | "misc" -> Misc
-      | _ -> assert false (* since produced by Section.to_string *)
-  end
-
   module Private_ = struct
+
+    module Section = struct
+      type t =
+        | Lib
+        | Lib_root
+        | Libexec
+        | Libexec_root
+        | Bin
+        | Sbin
+        | Toplevel
+        | Share
+        | Share_root
+        | Etc
+        | Doc
+        | Stublibs
+        | Man
+        | Misc
+
+      let of_string = function
+        | "lib" -> Lib
+        | "lib_root" -> Lib_root
+        | "libexec" -> Libexec
+        | "libexec_root" -> Libexec_root
+        | "bin" -> Bin
+        | "sbin" -> Sbin
+        | "toplevel" -> Toplevel
+        | "share" -> Share
+        | "share_root" -> Share_root
+        | "etc" -> Etc
+        | "doc" -> Doc
+        | "stublibs" -> Stublibs
+        | "man" -> Man
+        | "misc" -> Misc
+        | _ -> assert false (* since produced by Section.to_string *)
+    end
 
     let dirs : (string*Section.t,string) Hashtbl.t = Hashtbl.create 10
     (* multi-bindings first is the one with least priority *)
@@ -86,6 +86,41 @@ module V1 = struct
       let dirs = match eval encoded with None -> dirs | Some d -> d::dirs in
       List.rev_map (fun dir -> Filename.concat dir suffix) dirs
     [@@inline never]
+
+    let path_sep = if Sys.win32 then ";" else ":"
+    let ocamlpath local =
+      let env = match Sys.getenv_opt "OCAMLPATH" with
+        | None -> []
+        | Some x -> [x]
+      in
+      let env = match eval local with
+        | None | Some "" -> env
+        | Some x -> x::env
+      in
+      String.concat path_sep env
+
+    module Plugin = struct
+      module type S = sig
+        val init: unit -> unit
+        val list: unit -> string list
+        val load_all: unit -> unit
+        val load: string -> unit
+      end
+
+      let env_ocamlpath dirs ocamlpath =
+        String.concat path_sep (dirs@[ocamlpath])
+
+      let list dirs =
+        List.concat
+          (List.map (fun dir -> (Array.to_list (Sys.readdir dir)))
+             (List.filter Sys.file_exists dirs))
+
+      let exists dirs plugin =
+        List.exists (fun d -> Sys.file_exists (Filename.concat d plugin)) dirs
+
+    end
+
+
   end
 
 end

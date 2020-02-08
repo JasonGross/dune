@@ -373,9 +373,9 @@ let gen_dune_package sctx pkg =
                            ~dir:(Path.build (lib_root lib))
                            ~modules ~foreign_objects))))
         in
-        let sites =
+        let sections =
           let sections =
-            Section.Set.of_list (Package.Name.Map.values pkg.sites_locations)
+            Section.Set.of_list (Section.Site.Map.values pkg.sites)
           in
           Section.Map.mapi (Section.Set.to_map sections)
             ~f:(fun section () -> Install.Section.Paths.get_local_location ctx.name section name)
@@ -385,8 +385,8 @@ let gen_dune_package sctx pkg =
           ; name
           ; entries
           ; dir = Path.build pkg_root
-          ; sites
-          ; sites2 = pkg.sites_locations
+          ; sections
+          ; sites = pkg.sites
           }
       in
       dune_package
@@ -427,8 +427,8 @@ let gen_dune_package sctx pkg =
         ; dir =
             Path.build
               (Config.local_install_lib_dir ~context:ctx.name ~package:name)
-        ; sites = Section.Map.empty
-        ; sites2 = Package.Name.Map.empty
+        ; sections = Section.Map.empty
+        ; sites = Section.Site.Map.empty
         }
       in
       Build.write_file

@@ -241,6 +241,7 @@ module File_ops_real (W : Workspace) : File_operations = struct
         | None ->
           Dune.Artifact_substitution.copy ~get_vcs
             ~get_location
+            ~get_localLibPath:None
             ~input:(input ic)
             ~output:(output oc))
 

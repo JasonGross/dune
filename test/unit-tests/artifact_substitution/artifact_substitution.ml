@@ -156,7 +156,9 @@ let test input =
      let output = Buffer.add_subbytes buf in
      Artifact_substitution.copy
        ~get_vcs:(fun _ -> None)
-       ~get_location:(fun _ _ -> Path.root) ~input ~output);
+       ~get_location:(fun _ _ -> Path.root)
+       ~get_localLibPath:None
+       ~input ~output);
   let result = Buffer.contents buf in
   if result <> expected then
     fail

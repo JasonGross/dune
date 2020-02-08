@@ -1,6 +1,8 @@
 open! Stdune
 open Import
 
+module DuneSection = Section
+
 (* The path after the man section mangling done by opam-installer. This roughly
    follows [add_man_section_dir] in [src/format/opamFile.ml] in opam. *)
 module Dst : sig
@@ -67,6 +69,48 @@ end = struct
         None
       else
         Some s
+end
+
+module SectionWithSite = struct
+  type t =
+    | Section of Section.t
+    | Site of { pkg: Package.Name.t; site: Section.Site.t }
+
+  (* let compare : t -> t -> Ordering.t = Poly.compare *)
+
+  let to_dyn x =
+    let open Dyn.Encoder in
+    match x with
+    | Section s -> constr "Section" [ Section.to_dyn s ]
+    | Site { pkg; site } -> constr "Section" [ Package.Name.to_dyn pkg;
+                                                 Section.Site.to_dyn site ]
+
+  let to_string = function
+    | Section s -> Section.to_string s
+    | Site {pkg;site} -> sprintf "(site %s %s)"
+                             (Package.Name.to_string pkg) (Section.Site.to_string site)
+
+
+  let decode =
+    let open Dune_lang.Decoder in
+    sum
+      [ ("lib", return (Section Lib))
+      ; ("lib_root", return (Section Lib_root))
+      ; ("libexec", return (Section Libexec))
+      ; ("libexec_root", return (Section Libexec_root))
+      ; ("bin", return (Section Bin))
+      ; ("sbin", return (Section Sbin))
+      ; ("toplevel", return (Section Toplevel))
+      ; ("share", return (Section Share))
+      ; ("share_root", return (Section Share_root))
+      ; ("etc", return (Section Etc))
+      ; ("doc", return (Section Doc))
+      ; ("stublibs", return (Section Stublibs))
+      ; ("man", return (Section Man))
+      ; ("misc", return (Section Misc))
+      ; ("site", pair Package.Name.decode Section.Site.decode
+         >>| (fun (pkg,site) -> Site {pkg;site}))
+      ]
 end
 
 module Section = struct
@@ -159,48 +203,6 @@ module Section = struct
   end
 end
 
-module SectionWithSite = struct
-  type t =
-    | Section of Section.t
-    | Site of { pkg: Package.Name.t; site: Package.Name.t }
-
-  (* let compare : t -> t -> Ordering.t = Poly.compare *)
-
-  let to_dyn x =
-    let open Dyn.Encoder in
-    match x with
-    | Section s -> constr "Section" [ Section.to_dyn s ]
-    | Site { pkg; site } -> constr "Section" [ Package.Name.to_dyn pkg;
-                                                 Package.Name.to_dyn site ]
-
-  let to_string = function
-    | Section s -> Section.to_string s
-    | Site {pkg;site} -> sprintf "(site %s %s)"
-                             (Package.Name.to_string pkg) (Package.Name.to_string site)
-
-
-  let decode =
-    let open Dune_lang.Decoder in
-    sum
-      [ ("lib", return (Section Lib))
-      ; ("lib_root", return (Section Lib_root))
-      ; ("libexec", return (Section Libexec))
-      ; ("libexec_root", return (Section Libexec_root))
-      ; ("bin", return (Section Bin))
-      ; ("sbin", return (Section Sbin))
-      ; ("toplevel", return (Section Toplevel))
-      ; ("share", return (Section Share))
-      ; ("share_root", return (Section Share_root))
-      ; ("etc", return (Section Etc))
-      ; ("doc", return (Section Doc))
-      ; ("stublibs", return (Section Stublibs))
-      ; ("man", return (Section Man))
-      ; ("misc", return (Section Misc))
-      ; ("site", pair Package.Name.decode Package.Name.decode
-         >>| (fun (pkg,site) -> Site {pkg;site}))
-      ]
-end
-
 module Entry = struct
   type 'src t =
     { src : 'src
@@ -281,7 +283,7 @@ module Entry = struct
       let dst =
         adjust_dst ~src:(Expanded (Path.to_string (Path.build src))) ~dst ~section
       in
-      let dst = Dst.add_prefix (Package.Name.to_string site) dst in
+      let dst = Dst.add_prefix (Section.Site.to_string site) dst in
       let dst_with_pkg_prefix = Dst.add_prefix (Package.Name.to_string pkg) dst in
       let (section:Section.t),dst = match section with
         | Lib -> Lib_root, dst_with_pkg_prefix

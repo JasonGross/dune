@@ -2,10 +2,28 @@
 
 open! Stdune
 
+module DuneSection = Section
+
 module Dst : sig
   type t
 
   val to_string : t -> string
+end
+
+module SectionWithSite : sig
+
+  type t =
+    | Section of Section.t
+    | Site of { pkg: Package.Name.t; site: Section.Site.t }
+
+  val to_string : t -> string
+
+  (* val parse_string : string -> (t, string) Result.t *)
+
+  val decode : t Dune_lang.Decoder.t
+
+  val to_dyn : t -> Dyn.t
+
 end
 
 module Section : sig
@@ -56,22 +74,6 @@ module Section : sig
   with type section := t
 end
 
-module SectionWithSite : sig
-
-  type t =
-    | Section of Section.t
-    | Site of { pkg: Package.Name.t; site: Package.Name.t }
-
-  val to_string : t -> string
-
-  (* val parse_string : string -> (t, string) Result.t *)
-
-  val decode : t Dune_lang.Decoder.t
-
-  val to_dyn : t -> Dyn.t
-
-end
-
 module Entry : sig
   type 'src t = private
     { src : 'src
@@ -89,7 +91,7 @@ module Entry : sig
     -> Path.Build.t -> Path.Build.t t
 
   val make_with_site : SectionWithSite.t -> ?dst:string
-    -> (pkg:Package.Name.t -> site:Package.Name.t ->  Section.t)
+    -> (pkg:Package.Name.t -> site:DuneSection.Site.t ->  Section.t)
     -> Path.Build.t -> Path.Build.t t
 
   val set_src : _ t -> 'src -> 'src t

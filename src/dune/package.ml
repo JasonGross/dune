@@ -384,7 +384,7 @@ type t =
   ; has_opam_file : bool
   ; tags : string list
   ; deprecated_package_names : Loc.t Name.Map.t
-  ; sites_locations: Section.t Name.Map.t
+  ; sites: Section.t Section.Site.Map.t
   }
 
 (* Package name are globally unique, so we can reasonably expect that there will
@@ -394,18 +394,18 @@ let hash t = Name.hash t.name
 
 let decode ~dir =
   let open Dune_lang.Decoder in
-  let name_map name decode print_value error_msg =
+  let name_map of_list_map to_string name decode print_value error_msg =
     field ~default:[] name
       ( Dune_lang.Syntax.since Stanza.syntax (2, 0)
         >>> repeat decode )
     >>| (fun l ->
-      match Name.Map.of_list_map l ~f:(fun (loc, s) -> (s, loc)) with
+      match of_list_map l ~f:(fun (loc, s) -> (s, loc)) with
       | Ok x -> x
       | Error (name, (loc1, _), (loc2, _)) ->
         User_error.raise
           [ Pp.textf "%s %s is declared twice:"
               error_msg
-              (Name.to_string name)
+              (to_string name)
           ; Pp.textf "- %s" (print_value loc1)
           ; Pp.textf "- %s" (print_value loc2)
           ])
@@ -423,11 +423,11 @@ let decode ~dir =
      and+ info = Info.decode ~since:(2, 0) ()
      and+ tags = field "tags" (enter (repeat string)) ~default:[]
      and+ deprecated_package_names =
-       name_map "deprecated_package_names"
+       name_map Name.Map.of_list_map Name.to_string "deprecated_package_names"
          (located Name.decode) Loc.to_file_colon_line "Deprecated package name"
-     and+ sites_locations =
-       name_map "sites_locations"
-         (pair Section.decode  Name.decode) Section.to_string "Site location name"
+     and+ sites =
+       name_map Section.Site.Map.of_list_map Section.Site.to_string "sites"
+         (pair Section.decode Section.Site.decode) Section.to_string "Site location name"
      in
      { name
      ; loc
@@ -442,7 +442,7 @@ let decode ~dir =
      ; has_opam_file = false
      ; tags
      ; deprecated_package_names
-     ; sites_locations
+     ; sites
      }
 
 let to_dyn
@@ -459,7 +459,7 @@ let to_dyn
     ; tags
     ; loc = _
     ; deprecated_package_names
-    ; sites_locations
+    ; sites
     } =
   let open Dyn.Encoder in
   record
@@ -476,8 +476,8 @@ let to_dyn
     ; ("version", option string version)
     ; ( "deprecated_package_names"
       , Name.Map.to_dyn Loc.to_dyn deprecated_package_names )
-    ; ( "sites_locations"
-      , Name.Map.to_dyn Section.to_dyn sites_locations )
+    ; ( "sites"
+      , Section.Site.Map.to_dyn Section.to_dyn sites )
     ]
 
 let opam_file t = Path.Source.relative t.path (Name.opam_fn t.name)
@@ -550,7 +550,7 @@ let load_opam_file file name =
   ; has_opam_file = true
   ; tags = Option.value (get_many "tags") ~default:[]
   ; deprecated_package_names = Name.Map.empty
-  ; sites_locations = Name.Map.empty
+  ; sites = Section.Site.Map.empty
   }
 
 let missing_deps (t : t) ~effective_deps =

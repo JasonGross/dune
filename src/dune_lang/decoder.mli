@@ -214,12 +214,14 @@ val field_b :
   -> ?on_dup:(Univ_map.t -> string -> Ast.t list -> unit)
   -> string
   -> bool fields_parser
+(** Test if the field is present *)
 
 val field_o_b :
      ?check:unit t
   -> ?on_dup:(Univ_map.t -> string -> Ast.t list -> unit)
   -> string
   -> bool option fields_parser
+(** Differentiate between not present and set to true or false *)
 
 (** A field that can appear multiple times *)
 val multi_field : string -> 'a t -> 'a list fields_parser

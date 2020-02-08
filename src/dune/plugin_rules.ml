@@ -4,7 +4,7 @@ open Dune_file.Plugin
 let meta_file ~dir {name; libraries=_; site=(_,(pkg,site)); _} =
   let dir = Path.Build.relative dir ".site" in
   let dir = Path.Build.relative dir (Package.Name.to_string pkg) in
-  let dir = Path.Build.relative dir (Package.Name.to_string site) in
+  let dir = Path.Build.relative dir (Section.Site.to_string site) in
   let dir = Path.Build.relative dir (Package.Name.to_string name) in
   let meta_file = Path.Build.relative dir "META" in
   meta_file

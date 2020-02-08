@@ -230,23 +230,23 @@ let host t = Option.value t.host ~default:t
 let get_site_of_packages t ~pkg ~site =
   match Package.Name.Map.find t.packages pkg with
   | Some p -> begin
-      match Package.Name.Map.find p.sites_locations site with
+      match Section.Site.Map.find p.sites site with
       | Some section -> section
       | None -> User_error.raise
                   [ Pp.textf "Package %s doesn't define a site %s"
                       (Package.Name.to_string pkg)
-                      (Package.Name.to_string site)
+                      (Section.Site.to_string site)
                   ]
     end
   | None ->
     match Findlib.find_root_package t.context.findlib pkg with
     | Ok p -> begin
-        match Package.Name.Map.find p.sites2 site with
+        match Section.Site.Map.find p.sites site with
         | Some section -> section
         | None -> User_error.raise
                     [ Pp.textf "Package %s doesn't define a site %s"
                         (Package.Name.to_string pkg)
-                        (Package.Name.to_string site)
+                        (Section.Site.to_string site)
                     ]
       end
     | Error Not_found ->
@@ -511,28 +511,28 @@ let create ~(context : Context.t) ?host ~projects ~packages ~stanzas
       let install_dir = Path.build install_dir in
       let v = Option.value (Stdune.Env.get context.env dune_dir_locations_var)
                 ~default:"" in
-      let v = Package.Name.Map.foldi ~init:v packages
-                ~f:(fun package_name package init ->
-                  let sections =
-                    Package.Name.Map.fold ~init:Install.Section.Set.empty
-                      package.Package.sites_locations
-                      ~f:(fun section acc -> Install.Section.Set.add acc section )
-                  in
-                  let paths =
-                    Install.Section.Paths.make ~package:package_name ~destdir:install_dir ()
-                  in
-                  Install.Section.Set.fold sections ~init
-                    ~f:(fun section acc ->
-                      sprintf "%s%c%s%c%s%s"
-                        (Package.Name.to_string package_name)
-                        Stdune.Bin.path_sep
-                        (Section.to_string section)
-                        Stdune.Bin.path_sep
-                        (Path.to_absolute_filename (Install.Section.Paths.get paths section))
-                        (if String.is_empty acc then acc
-                         else sprintf "%c%s" Stdune.Bin.path_sep acc)
-                    )
-                )
+    let v = Package.Name.Map.foldi ~init:v packages
+              ~f:(fun package_name package init ->
+                let sections =
+                  Section.Site.Map.fold ~init:Install.Section.Set.empty
+                    package.Package.sites
+                    ~f:(fun section acc -> Install.Section.Set.add acc section )
+                in
+                let paths =
+                  Install.Section.Paths.make ~package:package_name ~destdir:install_dir ()
+                in
+                Install.Section.Set.fold sections ~init
+                  ~f:(fun section acc ->
+                    sprintf "%s%c%s%c%s%s"
+                      (Package.Name.to_string package_name)
+                      Stdune.Bin.path_sep
+                      (Section.to_string section)
+                      Stdune.Bin.path_sep
+                      (Path.to_absolute_filename (Install.Section.Paths.get paths section))
+                      (if String.is_empty acc then acc
+                       else sprintf "%c%s" Stdune.Bin.path_sep acc)
+                  )
+              )
       in
       v
     in

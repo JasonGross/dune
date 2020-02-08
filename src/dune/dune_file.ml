@@ -1053,14 +1053,14 @@ module Plugin = struct
     package: Package.t;
     name: Package.Name.t;
     libraries: (Loc.t * Lib_name.t) list;
-    site: (Loc.t * (Package.Name.t * Package.Name.t));
+    site: (Loc.t * (Package.Name.t * Section.Site.t));
   }
 
   let decode =
     fields
       (let+ name = field "name" Package.Name.decode
        and+ libraries = field "libraries" (repeat (located Lib_name.decode))
-       and+ site =  field "site" (located (pair Package.Name.decode Package.Name.decode))
+       and+ site =  field "site" (located (pair Package.Name.decode Section.Site.decode))
        and+ package = Pkg.field "package" in
        { name; libraries; site; package })
 end
@@ -2067,22 +2067,27 @@ module Deprecated_library_name = struct
        { loc; project; old_public_name; new_public_name })
 end
 
-module Sites_locations = struct
+module Generate_module = struct
 
   type t =
     { loc : Loc.t
     ; module_ : Module_name.t
-    ; package : Package.Name.t
+    ; ocamlpath: bool
+    ; sites : (Loc.t * Package.Name.t) list
+    ; plugins : (Loc.t * (Package.Name.t * (Loc.t * Section.Site.t))) list
     }
 
   let decode =
     fields
       (let+ loc = loc
        and+ module_ = field "module" Module_name.decode
-       and+ package =
-         field "package" Package.Name.decode
+       and+ ocamlpath = field_b "ocamlpath"
+       and+ sites = field "sites" ~default:[] (repeat (located Package.Name.decode))
+       and+ plugins =
+         field "plugins" ~default:[]
+           (repeat (located (pair Package.Name.decode (located Section.Site.decode))))
        in
-       { loc; module_; package })
+       { loc; module_; ocamlpath; sites; plugins })
 end
 
 type Stanza.t +=
@@ -2099,7 +2104,7 @@ type Stanza.t +=
   | Toplevel of Toplevel.t
   | External_variant of External_variant.t
   | Deprecated_library_name of Deprecated_library_name.t
-  | Sites_locations of Sites_locations.t
+  | Generate_module of Generate_module.t
   | Plugin of Plugin.t
 
 module Stanzas = struct
@@ -2198,10 +2203,10 @@ module Stanzas = struct
       , let+ () = Dune_lang.Syntax.since Stanza.syntax (2, 0)
         and+ t = Deprecated_library_name.decode in
         [ Deprecated_library_name t ] )
-    ; ( "sites"
+    ; ( "generate_module"
       , let+ () = Dune_lang.Syntax.since Stanza.syntax (2, 2)
-        and+ t = Sites_locations.decode in
-        [ Sites_locations t ] )
+        and+ t = Generate_module.decode in
+        [ Generate_module t ] )
     ; ( "plugin"
       , let+ () = Dune_lang.Syntax.since Stanza.syntax (2, 2)
         and+ t = Plugin.decode in
