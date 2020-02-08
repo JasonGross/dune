@@ -2073,6 +2073,7 @@ module Generate_module = struct
     { loc : Loc.t
     ; module_ : Module_name.t
     ; ocamlpath: bool
+    ; sourceroot: bool
     ; sites : (Loc.t * Package.Name.t) list
     ; plugins : (Loc.t * (Package.Name.t * (Loc.t * Section.Site.t))) list
     }
@@ -2082,12 +2083,13 @@ module Generate_module = struct
       (let+ loc = loc
        and+ module_ = field "module" Module_name.decode
        and+ ocamlpath = field_b "ocamlpath"
+       and+ sourceroot = field_b "sourceroot"
        and+ sites = field "sites" ~default:[] (repeat (located Package.Name.decode))
        and+ plugins =
          field "plugins" ~default:[]
            (repeat (located (pair Package.Name.decode (located Section.Site.decode))))
        in
-       { loc; module_; ocamlpath; sites; plugins })
+       { loc; module_; sourceroot; ocamlpath; sites; plugins })
 end
 
 type Stanza.t +=

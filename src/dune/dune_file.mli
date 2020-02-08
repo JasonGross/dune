@@ -440,6 +440,7 @@ module Generate_module : sig
     { loc : Loc.t
     ; module_ : Module_name.t
     ; ocamlpath: bool
+    ; sourceroot: bool
     ; sites : (Loc.t * Package.Name.t) list
     ; plugins : (Loc.t * (Package.Name.t * (Loc.t * Section.Site.t))) list
     }

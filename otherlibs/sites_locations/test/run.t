@@ -62,7 +62,7 @@ Test embedding of sites locations information
   >  (name c_register)
   >  (modules c_register)
   > )
-  > (generate_module (module sites) (plugins (c plugins)))
+  > (generate_module (module sites) (sourceroot) (plugins (c plugins)))
   > (rule
   >  (targets out.log)
   >  (deps (package c))
@@ -76,6 +76,9 @@ Test embedding of sites locations information
   $ cat >c/c.ml <<EOF
   > let () = Printf.printf "run c: %s linked b_registered:%b\n%!"
   >   A.v !C_register.b_registered
+  > let () = match Sites.sourceroot with
+  >       | Some d -> Printf.printf "sourceroot is %S\n%!" d
+  >       | None -> Printf.printf "no sourceroot\n%!"
   > let () = List.iter (Printf.printf "c: %s\n%!") Sites.Sites.C.data
   > let () = Sites.Plugins.C.Plugins.init ()
   > let () = Sites.Plugins.C.Plugins.load_all ()
@@ -95,6 +98,7 @@ Inside _build, we have no sites information:
   $ _build/default/c/c.exe
   run a
   run c: a linked b_registered:false
+  no sourceroot
   run c: b_registered:false
 
 Once installed, we have the sites information:
@@ -103,6 +107,7 @@ Once installed, we have the sites information:
   run a
   a: $TESTCASE_ROOT/_install/share/a/data
   run c: a linked b_registered:false
+  no sourceroot
   c: $TESTCASE_ROOT/_install/share/c/data
   run b
   b: $TESTCASE_ROOT/_install/share/b/data
@@ -115,6 +120,7 @@ Test substitution when promoting
   run a
   a: $TESTCASE_ROOT/_build/install/default/share/a/data
   run c: a linked b_registered:false
+  sourceroot is "$TESTCASE_ROOT"
   c: $TESTCASE_ROOT/_build/install/default/share/c/data
   run b
   run c: b_registered:true
@@ -127,6 +133,7 @@ Test within dune rules
   run a
   a: $TESTCASE_ROOT/_build/install/default/share/a/data
   run c: a linked b_registered:false
+  sourceroot is "$TESTCASE_ROOT"
   c: $TESTCASE_ROOT/_build/install/default/share/c/data
   run b
   b: $TESTCASE_ROOT/_build/install/default/share/b/data
@@ -139,6 +146,7 @@ Test with dune exec
   run a
   a: $TESTCASE_ROOT/_build/install/default/share/a/data
   run c: a linked b_registered:false
+  sourceroot is "$TESTCASE_ROOT"
   c: $TESTCASE_ROOT/_build/install/default/share/c/data
   run b
   b: $TESTCASE_ROOT/_build/install/default/share/b/data

@@ -1647,15 +1647,19 @@ end = struct
                   let context = Option.value_exn context in
                   Install.Section.Paths.get_local_location context.name
                 in
-                let get_localLibPath () =
-                  let context = Option.value_exn context in
-                  let install_dir = Config.local_install_dir ~context:context.name in
-                  Path.build (Path.Build.relative install_dir "lib")
+                let get_localPath =
+                  function
+                  | Artifact_substitution.InstallLib ->
+                    let context = Option.value_exn context in
+                    let install_dir = Config.local_install_dir ~context:context.name in
+                    Some (Path.build (Path.Build.relative install_dir "lib"))
+                  | SourceRoot ->
+                    Some (Path.source Path.Source.root)
                 in
                 Artifact_substitution.copy_file () ~src:path ~dst:in_source_tree
                   ~get_vcs:File_tree.nearest_vcs
                   ~get_location
-                  ~get_localLibPath:(Some get_localLibPath)
+                  ~get_localPath:get_localPath
                   ~chmod ))
     in
     t.rule_done <- t.rule_done + 1

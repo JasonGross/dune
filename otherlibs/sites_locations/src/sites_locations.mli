@@ -30,6 +30,7 @@ module V1 : sig
       suffix:string -> encoded:string -> Location.t list
 
     val ocamlpath: string -> string
+    val sourceroot: string -> string option
 
     module Plugin : sig
       module type S = sig

@@ -78,6 +78,11 @@ module V1 = struct
         None
     [@@inline never]
 
+    let eval_without_empty encoded =
+     match eval encoded with
+        | None | Some "" -> None
+        | Some _ as x -> x
+
     let get_dir ~package ~section =
       Hashtbl.find_all dirs (package,section)
 
@@ -87,14 +92,19 @@ module V1 = struct
       List.rev_map (fun dir -> Filename.concat dir suffix) dirs
     [@@inline never]
 
+    let sourceroot local =
+      match Sys.getenv_opt "DUNE_SOURCEROOT" with
+        | None -> eval_without_empty local
+        | Some _ as x -> x
+
     let path_sep = if Sys.win32 then ";" else ":"
     let ocamlpath local =
       let env = match Sys.getenv_opt "OCAMLPATH" with
         | None -> []
         | Some x -> [x]
       in
-      let env = match eval local with
-        | None | Some "" -> env
+      let env = match eval_without_empty local with
+        | None -> env
         | Some x -> x::env
       in
       String.concat path_sep env

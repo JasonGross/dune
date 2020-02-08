@@ -449,6 +449,8 @@ let create ~(kind : Kind.t) ~path ~env ~env_nodes ~name ~merlin ~targets
         ; extend_var "MANPATH"
             (Path.build (Config.local_install_man_dir ~context:name))
         ; ("INSIDE_DUNE", Path.to_absolute_filename (Path.build build_dir))
+        ; ("DUNE_SOURCEROOT",
+           Path.to_absolute_filename (Path.source (Path.Source.root)))
         ]
       in
       Env.extend env ~vars:(Env.Map.of_list_exn vars)

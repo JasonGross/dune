@@ -2,11 +2,15 @@
 
 open Stdune
 
+type localpath =
+  | SourceRoot
+  | InstallLib
+
 (** A symbolic representation of the value to substitute to *)
 type t =
   | Vcs_describe of Path.Source.t
   | Location of Section.t * Package.Name.t
-  | LocalLibPath
+  | LocalPath of localpath
   | Repeat of int * string
       (** [Repeat (n, s)] evaluates to [s] repeated [n] times. This substitution
           is used for unit tests. *)
@@ -28,7 +32,7 @@ val decode : string -> t option
 val copy_file :
   get_vcs:(Path.Source.t -> Vcs.t option)
   -> get_location:(Section.t -> Package.Name.t -> Path.t)
-  -> get_localLibPath:(unit -> Path.t) option
+  -> get_localPath:(localpath -> Path.t option)
   -> ?chmod:(int -> int)
   -> src:Path.t
   -> dst:Path.t
@@ -41,7 +45,7 @@ val copy_file :
 val copy :
      get_vcs:(Path.Source.t -> Vcs.t option)
   -> get_location:(Section.t -> Package.Name.t -> Path.t)
-  -> get_localLibPath:(unit -> Path.t) option
+  -> get_localPath:(localpath -> Path.t option)
   -> input:(Bytes.t -> int -> int -> int)
   -> output:(Bytes.t -> int -> int -> unit)
   -> unit Fiber.t
