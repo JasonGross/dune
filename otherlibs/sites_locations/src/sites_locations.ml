@@ -111,14 +111,14 @@ module V1 = struct
 
     module Plugin = struct
       module type S = sig
-        val init: unit -> unit
+        val paths: string list
         val list: unit -> string list
         val load_all: unit -> unit
         val load: string -> unit
       end
 
-      let env_ocamlpath dirs ocamlpath =
-        String.concat path_sep (dirs@[ocamlpath])
+      let concat_paths paths ocamlpath =
+        String.concat path_sep ((List.flatten paths)@[ocamlpath])
 
       let list dirs =
         List.concat

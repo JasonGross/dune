@@ -34,7 +34,7 @@ module V1 : sig
 
     module Plugin : sig
       module type S = sig
-        val init: unit -> unit
+        val paths: string list
         val list: unit -> string list
         val load_all: unit -> unit
         val load: string -> unit
@@ -44,7 +44,7 @@ module V1 : sig
 
       val exists: string list -> string -> bool
 
-      val env_ocamlpath: string list -> string -> string
+      val concat_paths: string list list -> string -> string
 
     end
 

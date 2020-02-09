@@ -50,7 +50,7 @@ let plugins_code sctx buf pkg sites =
       then User_error.raise ~loc [Pp.textf "Package %s doesn't define a site %s" pkg site];
       (* let pkg = String.capitalize pkg in *)
       pr buf "    module %s : Sites_locations.V1.Private_.Plugin.S = struct" (String.capitalize site);
-      pr buf "      let init () = Findlib.init ~env_ocamlpath:(Sites_locations.V1.Private_.Plugin.env_ocamlpath Sites.%s ocamlpath) ()" site;
+      pr buf "      let paths = Sites.%s" site;
       pr buf "      let list () = Sites_locations.V1.Private_.Plugin.list Sites.%s" site;
       pr buf "      let load_all () = Fl_dynload.load_packages (list ())";
       pr buf "      let exists name = Sites_locations.V1.Private_.Plugin.exists Sites.%s name" site;
@@ -76,6 +76,7 @@ let setup_rules sctx ~dir (def:Dune_file.Generate_module.t) =
   let plugins = Package.Name.Map.of_list_multi (List.map ~f:snd def.plugins) in
   if not (Package.Name.Map.is_empty plugins) then begin
     pr buf "module Plugins = struct";
+    pr buf "      let init paths () = Findlib.init ~env_ocamlpath:(Sites_locations.V1.Private_.Plugin.concat_paths paths ocamlpath) ()";
     Package.Name.Map.iteri plugins ~f:(plugins_code sctx buf);
     pr buf "end"
   end;
