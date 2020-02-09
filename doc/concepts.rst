@@ -1007,6 +1007,16 @@ the installation directory is either guessed or can be manually
 specified by the user.  This is described more in detail in the last
 section of this page.
 
+.. _sites:
+Sites of a package
+-------------------------------
+
+When packages need additional ressources outside their binary, their location
+could be hard to find. Moreover some packages could add ressources to another
+package, for example in the case of plugins. These location are called sites in
+dune. One package can define them.
+
+
 Libraries
 ^^^^^^^^^
 

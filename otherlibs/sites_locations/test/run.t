@@ -32,7 +32,7 @@ Test embedding of sites locations information
   $ cat >a/a.ml <<EOF
   > let v = "a"
   > let () = Printf.printf "run a\n%!"
-  > let () = List.iter (Printf.printf "a: %s\n%!") Sites.Sites.A.data
+  > let () = List.iter (Printf.printf "a: %s\n%!") Sites.Sites.data
   > EOF
 
   $ cat >b/dune <<EOF
@@ -48,7 +48,7 @@ Test embedding of sites locations information
   > let v = "b"
   > let () = Printf.printf "run b\n%!"
   > let () = C_register.b_registered := true
-  > let () = List.iter (Printf.printf "b: %s\n%!") Sites.Sites.B.data
+  > let () = List.iter (Printf.printf "b: %s\n%!") Sites.Sites.data
   > EOF
 
   $ cat >c/dune <<EOF
@@ -79,9 +79,9 @@ Test embedding of sites locations information
   > let () = match Sites.sourceroot with
   >       | Some d -> Printf.printf "sourceroot is %S\n%!" d
   >       | None -> Printf.printf "no sourceroot\n%!"
-  > let () = List.iter (Printf.printf "c: %s\n%!") Sites.Sites.C.data
-  > let () = Sites.Plugins.C.Plugins.init ()
-  > let () = Sites.Plugins.C.Plugins.load_all ()
+  > let () = List.iter (Printf.printf "c: %s\n%!") Sites.Sites.data
+  > let () = Sites.Plugins.Plugins.init ()
+  > let () = Sites.Plugins.Plugins.load_all ()
   > let () = Printf.printf "run c: b_registered:%b\n%!" !C_register.b_registered
   > EOF
 
