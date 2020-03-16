@@ -239,9 +239,12 @@ module File_ops_real (W : Workspace) : File_operations = struct
         | Some Dune_package ->
           copy_special_file ~src ~package ~ic ~oc ~f:(process_dune_package ~get_location)
         | None ->
-          Dune.Artifact_substitution.copy ~get_vcs
-            ~get_location
-            ~get_localPath:(fun _ -> None)
+          Dune.Artifact_substitution.copy
+            ~conf:{
+              get_vcs;
+              get_location;
+              get_localPath=(fun _ -> None);
+            }
             ~input:(input ic)
             ~output:(output oc))
 

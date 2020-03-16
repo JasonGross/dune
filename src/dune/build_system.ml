@@ -1657,9 +1657,10 @@ end = struct
                     Some (Path.source Path.Source.root)
                 in
                 Artifact_substitution.copy_file () ~src:path ~dst:in_source_tree
-                  ~get_vcs:File_tree.nearest_vcs
-                  ~get_location
-                  ~get_localPath:get_localPath
+                  ~conf:{ get_vcs = File_tree.nearest_vcs;
+                          get_location;
+                          get_localPath;
+                        }
                   ~chmod ))
     in
     t.rule_done <- t.rule_done + 1

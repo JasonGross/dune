@@ -15,6 +15,12 @@ type t =
       (** [Repeat (n, s)] evaluates to [s] repeated [n] times. This substitution
           is used for unit tests. *)
 
+type conf = {
+  get_vcs:(Path.Source.t -> Vcs.t option);
+  get_location:(Section.t -> Package.Name.t -> Path.t);
+  get_localPath:(localpath -> Path.t option);
+}
+
 val to_dyn : t -> Dyn.t
 
 (** A string encoding of a substitution. The resulting string is what should be
@@ -30,9 +36,7 @@ val decode : string -> t option
 
 (** Copy a file, performing all required substitutions *)
 val copy_file :
-  get_vcs:(Path.Source.t -> Vcs.t option)
-  -> get_location:(Section.t -> Package.Name.t -> Path.t)
-  -> get_localPath:(localpath -> Path.t option)
+  conf:conf
   -> ?chmod:(int -> int)
   -> src:Path.t
   -> dst:Path.t
@@ -43,9 +47,7 @@ val copy_file :
     output functions. Their semantic must match the ones of the [input] and
     [output] functions from the OCaml standard library. *)
 val copy :
-     get_vcs:(Path.Source.t -> Vcs.t option)
-  -> get_location:(Section.t -> Package.Name.t -> Path.t)
-  -> get_localPath:(localpath -> Path.t option)
+  conf:conf
   -> input:(Bytes.t -> int -> int -> int)
   -> output:(Bytes.t -> int -> int -> unit)
   -> unit Fiber.t

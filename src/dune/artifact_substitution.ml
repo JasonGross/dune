@@ -38,6 +38,12 @@ type t =
   | LocalPath of localpath
   | Repeat of int * string
 
+type conf = {
+  get_vcs:(Path.Source.t -> Vcs.t option);
+  get_location:(Section.t -> Package.Name.t -> Path.t);
+  get_localPath:(localpath -> Path.t option);
+}
+
 let to_dyn = function
   | Vcs_describe p -> Dyn.Variant ("Vcs_describe", [ Path.Source.to_dyn p ])
   | Location (kind,lib_name) ->
@@ -47,21 +53,21 @@ let to_dyn = function
     Dyn.Variant ("LocalPath",[Dyn.Variant(v,[])])
   | Repeat (n, s) -> Dyn.Variant ("Repeat", [ Int n; String s ])
 
-let eval t ~get_vcs ~get_location ~get_localPath =
+let eval t ~conf =
   match t with
   | Repeat (n, s) ->
     Fiber.return (Array.make n s |> Array.to_list |> String.concat ~sep:"")
   | Vcs_describe p -> (
-    match get_vcs p with
+    match conf.get_vcs p with
     | None -> Fiber.return ""
     | Some vcs -> Vcs.describe vcs )
   | Location (name,lib_name) ->
-    Fiber.return (Path.to_absolute_filename (get_location name lib_name))
+    Fiber.return (Path.to_absolute_filename (conf.get_location name lib_name))
   | LocalPath d ->
     Fiber.return
       (Option.value ~default:""
          (let open Option.O in
-          let+ dir = (get_localPath d) in
+          let+ dir = (conf.get_localPath d) in
           Path.to_absolute_filename dir))
 
 let encode_replacement ~len ~repl:s =
@@ -326,7 +332,7 @@ let buf_len = max_len
 
 let buf = Bytes.create buf_len
 
-let copy ~get_vcs ~get_location ~get_localPath ~input ~output =
+let copy ~conf ~input ~output =
   let open Fiber.O in
   (* The copy algorithm works as follow:
 
@@ -365,7 +371,7 @@ let copy ~get_vcs ~get_location ~get_localPath ~input ~output =
       let placeholder = Bytes.sub_string buf ~pos:placeholder_start ~len in
       match decode placeholder with
       | Some t ->
-        let* s = eval t ~get_vcs ~get_location ~get_localPath in
+        let* s = eval t ~conf in
         let s = encode_replacement ~len ~repl:s in
         output (Bytes.unsafe_of_string s) 0 len;
         let pos = placeholder_start + len in
@@ -414,10 +420,10 @@ let copy ~get_vcs ~get_location ~get_localPath ~input ~output =
   | 0 -> Fiber.return ()
   | n -> loop Scan0 ~beginning_of_data:0 ~pos:0 ~end_of_data:n
 
-let copy_file ~get_vcs ~get_location ~get_localPath ?chmod ~src ~dst () =
+let copy_file ~conf ?chmod ~src ~dst () =
   let ic, oc = Io.setup_copy ?chmod ~src ~dst () in
   Fiber.finalize
     ~finally:(fun () ->
       Io.close_both (ic, oc);
       Fiber.return ())
-    (fun () -> copy ~get_vcs ~get_location ~get_localPath ~input:(input ic) ~output:(output oc))
+    (fun () -> copy ~conf ~input:(input ic) ~output:(output oc))
