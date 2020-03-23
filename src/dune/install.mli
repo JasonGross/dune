@@ -27,21 +27,7 @@ module SectionWithSite : sig
 end
 
 module Section : sig
-  type t = Section.t =
-    | Lib
-    | Lib_root
-    | Libexec
-    | Libexec_root
-    | Bin
-    | Sbin
-    | Toplevel
-    | Share
-    | Share_root
-    | Etc
-    | Doc
-    | Stublibs
-    | Man
-    | Misc
+  type t = Section.t
 
   module Set : Set.S with type elt = t
 

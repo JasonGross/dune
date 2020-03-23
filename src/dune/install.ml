@@ -115,22 +115,6 @@ end
 
 module Section = struct
   include Section
-  type t = Section.t =
-    | Lib
-    | Lib_root
-    | Libexec
-    | Libexec_root
-    | Bin
-    | Sbin
-    | Toplevel
-    | Share
-    | Share_root
-    | Etc
-    | Doc
-    | Stublibs
-    | Man
-    | Misc
-
 
   module Paths = struct
     type t =

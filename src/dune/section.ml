@@ -176,7 +176,5 @@ module Site = struct
     end) :
       Stringlike_intf.S with type t := t )
 
-  let pp fmt t = Format.pp_print_string fmt (to_string t)
-
   module Infix = Comparator.Operators (T)
 end

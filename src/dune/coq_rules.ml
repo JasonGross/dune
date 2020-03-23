@@ -368,7 +368,7 @@ let coq_plugins_install_rules ~scope ~package ~dst_dir (s : Theory.t) =
              let dst =
                Path.Local.(to_string (relative dst_dir plugin_file_basename))
              in
-             (Some loc, Install.(Entry.make Section.Lib_root ~dst plugin_file)))
+             (Some loc, Install.Entry.make Section.Lib_root ~dst plugin_file))
     else
       []
   in

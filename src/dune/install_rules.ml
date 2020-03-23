@@ -269,7 +269,7 @@ end = struct
                   ( None
                   , Install.Entry.make
                       ~dst:(sprintf "odoc-pages/%s" (Path.Build.basename mld))
-                      Install.Section.Doc mld ))
+                      Section.Doc mld ))
             | Dune_file.Plugin t ->
               Plugin_rules.install_rules ~sctx ~dir t
             | _ -> []
