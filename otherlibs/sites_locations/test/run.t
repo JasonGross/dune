@@ -56,7 +56,7 @@ Test embedding of sites locations information
   >  (public_name c)
   >  (promote (until-clean))
   >  (modules c sites)
-  >  (libraries a c.register findlib.dynload dune-sites-locations))
+  >  (libraries a c.register dune-sites-locations dune-sites-locations.plugins))
   > (library
   >  (public_name c.register)
   >  (name c_register)
@@ -80,7 +80,6 @@ Test embedding of sites locations information
   >       | Some d -> Printf.printf "sourceroot is %S\n%!" d
   >       | None -> Printf.printf "no sourceroot\n%!"
   > let () = List.iter (Printf.printf "c: %s\n%!") Sites.Sites.data
-  > let () = Sites.Plugins.init [Sites.Plugins.Plugins.paths] ()
   > let () = Sites.Plugins.Plugins.load_all ()
   > let () = Printf.printf "run c: b_registered:%b\n%!" !C_register.b_registered
   > EOF

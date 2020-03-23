@@ -6,11 +6,11 @@ let max_path_length = 4096
 let pr buf fmt = Printf.bprintf buf (fmt ^^ "\n")
 
 let sourceroot_code buf =
-  pr buf "let sourceroot = Sites_locations.V1.Private_.sourceroot %S"
+  pr buf "let sourceroot = Sites_locations.Private_.sourceroot %S"
     (Artifact_substitution.encode ~min_len:max_path_length (LocalPath SourceRoot))
 
 let ocamlpath_code buf =
-  pr buf "let ocamlpath = Sites_locations.V1.Private_.ocamlpath %S"
+  pr buf "let ocamlpath = Sites_locations.Private_.ocamlpath %S"
     (Artifact_substitution.encode ~min_len:max_path_length (LocalPath InstallLib))
 
 let sites_code sctx buf (loc,pkg) =
@@ -24,10 +24,11 @@ let sites_code sctx buf (loc,pkg) =
   (* Parse the replacement format described in [artifact_substitution.ml]. *)
   Section.Site.Map.iteri package.sites
     ~f:(fun name section ->
-      pr buf "    let %s = Sites_locations.V1.Private_.site"
+      pr buf "    let %s = Sites_locations.Private_.site"
         (Section.Site.to_string name);
       pr buf "      ~package:%S" (Package.Name.to_string package.name);
-      pr buf "      ~section:%s" (String.capitalize_ascii (Section.to_string section));
+      pr buf "      ~section:Sites_locations.Private_.Section.%s"
+        (String.capitalize_ascii (Section.to_string section));
       pr buf "      ~suffix:%S" (Section.Site.to_string name);
       pr buf "      ~encoded:%S"
         (Artifact_substitution.encode ~min_len:max_path_length (Location(section,package.name)));
@@ -49,13 +50,9 @@ let plugins_code sctx buf pkg sites =
       if not (Section.Site.Map.mem package.sites ssite)
       then User_error.raise ~loc [Pp.textf "Package %s doesn't define a site %s" pkg site];
       (* let pkg = String.capitalize pkg in *)
-      pr buf "    module %s : Sites_locations.V1.Private_.Plugin.S = struct" (String.capitalize site);
-      pr buf "      let paths = Sites.%s" site;
-      pr buf "      let list () = Sites_locations.V1.Private_.Plugin.list Sites.%s" site;
-      pr buf "      let load_all () = Fl_dynload.load_packages (list ())";
-      pr buf "      let exists name = Sites_locations.V1.Private_.Plugin.exists Sites.%s name" site;
-      pr buf "      let load name = if exists name then Fl_dynload.load_packages [name] else raise Not_found";
-      pr buf "    end";
+      pr buf "    module %s : Sites_locations_plugins.Private_.S = \
+              Sites_locations_plugins.Private_.Make(struct let paths = Sites.%s let ocamlpath = ocamlpath end)"
+        (String.capitalize site) site;
     )
   (* pr buf "  end" *)
 
@@ -76,7 +73,6 @@ let setup_rules sctx ~dir (def:Dune_file.Generate_module.t) =
   let plugins = Package.Name.Map.of_list_multi (List.map ~f:snd def.plugins) in
   if not (Package.Name.Map.is_empty plugins) then begin
     pr buf "module Plugins = struct";
-    pr buf "      let init paths () = Findlib.init ~env_ocamlpath:(Sites_locations.V1.Private_.Plugin.concat_paths paths ocamlpath) ()";
     Package.Name.Map.iteri plugins ~f:(plugins_code sctx buf);
     pr buf "end"
   end;

@@ -1,0 +1,5 @@
+(library
+ (name sites_locations_plugins)
+ (public_name dune-sites-locations.plugins)
+ (libraries dune-sites-locations findlib.dynload)
+)
