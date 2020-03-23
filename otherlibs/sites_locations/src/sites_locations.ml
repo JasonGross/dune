@@ -75,11 +75,6 @@ module Private_ = struct
       None
   [@@inline never]
 
-  let eval_without_empty encoded =
-    match eval encoded with
-    | None | Some "" -> None
-    | Some _ as x -> x
-
   let get_dir ~package ~section =
     Hashtbl.find_all dirs (package,section)
 
@@ -99,13 +94,13 @@ module Private_ = struct
       Sys.getenv_opt "DUNE_SOURCEROOT"
 
   let path_sep = if Sys.win32 then ";" else ":"
-  let ocamlpath local =
+  let ocamlpath installlib =
     let env = match Sys.getenv_opt "OCAMLPATH" with
       | None -> []
       | Some x -> [x]
     in
-    let env = match eval_without_empty local with
-      | None -> env
+    let env = match eval installlib with
+      | None | Some "" -> env
       | Some x -> x::env
     in
     String.concat path_sep env
