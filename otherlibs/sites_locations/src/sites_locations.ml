@@ -90,9 +90,13 @@ module Private_ = struct
   [@@inline never]
 
   let sourceroot local =
-    match Sys.getenv_opt "DUNE_SOURCEROOT" with
-    | None -> eval_without_empty local
+    match eval local with
+    | Some "" -> None
     | Some _ as x -> x
+    | None ->
+      (* None if the binary is executed from _build but not by dune, which
+         should not happend *)
+      Sys.getenv_opt "DUNE_SOURCEROOT"
 
   let path_sep = if Sys.win32 then ";" else ":"
   let ocamlpath local =

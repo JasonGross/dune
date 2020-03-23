@@ -92,14 +92,6 @@ Test embedding of sites locations information
 
   $ dune install --prefix _install 2> /dev/null
 
-Inside _build, we have no sites information:
-
-  $ _build/default/c/c.exe
-  run a
-  run c: a linked b_registered:false
-  no sourceroot
-  run c: b_registered:false
-
 Once installed, we have the sites information:
 
   $ OCAMLPATH=_install/lib:$OCAMLPATH _install/bin/c
