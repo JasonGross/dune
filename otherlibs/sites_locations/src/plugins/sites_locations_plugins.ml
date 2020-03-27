@@ -21,10 +21,15 @@ module Private_ = struct
   let init id paths ocamlpath () =
     if !initialized_id <> id
     then
-      let env_ocamlpath =
-        String.concat Sites_locations.Private_.path_sep (paths@[ocamlpath])
-      in
-      Findlib.init ~env_ocamlpath ()
+      let ocamlpath = String.split_on_char Sites_locations.Private_.path_sep.[0] ocamlpath in
+      let search_path = (paths@ocamlpath) in
+      if Lazy.force Sites_locations.Private_.relocatable then
+        Findlib.init_manually ~search_path ~install_dir:"" ~meta_dir:"" ()
+      else
+        let env_ocamlpath =
+          String.concat Sites_locations.Private_.path_sep search_path
+        in
+        Findlib.init ~env_ocamlpath ()
 
   module Make (X:sig val paths: string list val ocamlpath: string end) : S = struct
     include X

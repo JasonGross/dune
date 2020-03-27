@@ -1,4 +1,10 @@
 (library
  (name sites_locations)
  (public_name dune-sites-locations)
+ (modules_without_implementation sites_locations_data)
+ ; (private_modules sites_locations_data)
+ (special_builtin_support
+  (sites_locations
+   (data_module sites_locations_data)
+ ))
 )

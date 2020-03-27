@@ -50,10 +50,16 @@ module Special_builtin_support : sig
     type t = { api_version : api_version }
   end
 
+  module Sites_locations : sig
+    type t =
+      { data_module : string }
+  end
+
   type t =
     | Findlib_dynload
     | Build_info of Build_info.t
     | Configurator of Configurator.t
+    | Sites_locations of Sites_locations.t
 
   include Dune_lang.Conv.S with type t := t
 end

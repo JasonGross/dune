@@ -169,6 +169,14 @@ let build_info_code cctx ~libs ~api_version =
       pr buf "%S, %s" (Lib_name.to_string name) v);
   Buffer.contents buf
 
+
+let sites_locations_code () =
+  let buf = Buffer.create 1024 in
+  pr buf "let relocatable_encoded = %S"
+    (Artifact_substitution.encode ~min_len:1 Relocatable);
+  Buffer.contents buf
+
+
 let handle_special_libs cctx =
   let open Result.O in
   let+ all_libs = CC.requires_link cctx in
@@ -229,6 +237,20 @@ let handle_special_libs cctx =
         | Configurator _ ->
           process_libs libs
             ~to_link_rev:(LM.Lib lib :: to_link_rev)
-            ~force_linkall ) )
+            ~force_linkall
+        | Sites_locations { data_module } ->
+          let module_ =
+            generate_and_compile_module cctx ~name:data_module ~lib
+              ~code:
+                (Build.return
+                   (sites_locations_code ()))
+              ~requires:(Ok [ lib ])
+              ~precompiled_cmi:true
+          in
+          process_libs libs
+            ~to_link_rev:(LM.Lib lib :: Module (obj_dir, module_) :: to_link_rev)
+            ~force_linkall
+
+      ))
   in
   process_libs all_libs ~to_link_rev:[] ~force_linkall:false

@@ -11,6 +11,7 @@ type t =
   | Vcs_describe of Path.Source.t
   | Location of Section.t * Package.Name.t
   | LocalPath of localpath
+  | Relocatable
   | Repeat of int * string
       (** [Repeat (n, s)] evaluates to [s] repeated [n] times. This substitution
           is used for unit tests. *)
@@ -19,6 +20,8 @@ type conf = {
   get_vcs:(Path.Source.t -> Vcs.t option);
   get_location:(Section.t -> Package.Name.t -> Path.t);
   get_localPath:(localpath -> Path.t option);
+  is_relocatable: Path.t option
+  (** Initial prefix of installation when relocatable chosen *)
 }
 
 val to_dyn : t -> Dyn.t

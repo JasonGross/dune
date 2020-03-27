@@ -9,6 +9,9 @@ let sourceroot_code buf =
   pr buf "let sourceroot = Sites_locations.Private_.sourceroot %S"
     (Artifact_substitution.encode ~min_len:max_path_length (LocalPath SourceRoot))
 
+let relocatable_code buf =
+  pr buf "let relocatable = Lazy.force Sites_locations.Private_.relocatable"
+
 let ocamlpath_code buf =
   pr buf "let ocamlpath = Sites_locations.Private_.ocamlpath %S"
     (Artifact_substitution.encode ~min_len:max_path_length (LocalPath InstallLib))
@@ -59,6 +62,7 @@ let plugins_code sctx buf pkg sites =
 let setup_rules sctx ~dir (def:Dune_file.Generate_module.t) =
   let buf = Buffer.create 1024 in
   if def.sourceroot then sourceroot_code buf;
+  if def.relocatable then relocatable_code buf;
   if def.ocamlpath || List.is_non_empty def.plugins then ocamlpath_code buf;
   let sites =
     List.sort_uniq

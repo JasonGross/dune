@@ -78,9 +78,31 @@ module Private_ = struct
   let get_dir ~package ~section =
     Hashtbl.find_all dirs (package,section)
 
+  let relocatable = lazy (
+    match eval Sites_locations_data.relocatable_encoded with
+    | Some "y" -> true
+    | None | Some "n" -> false
+    | Some _ -> assert false (* absurd: only y/n are generated *)
+  )
+
+  let prefix = lazy (
+    let path = Sys.executable_name in
+    let bin = Filename.dirname path in
+    let prefix = Filename.dirname bin in
+    prefix
+  )
+  let relocate_if_needed path =
+    if Lazy.force relocatable then
+      Filename.concat (Lazy.force prefix) path
+    else
+      path
+
   let site ~package ~section ~suffix ~encoded =
     let dirs = get_dir ~package ~section in
-    let dirs = match eval encoded with None -> dirs | Some d -> d::dirs in
+    let dirs = match eval encoded with
+      | None -> dirs
+      | Some d -> (relocate_if_needed d)::dirs
+    in
     List.rev_map (fun dir -> Filename.concat dir suffix) dirs
   [@@inline never]
 
@@ -102,6 +124,11 @@ module Private_ = struct
     let env = match eval installlib with
       | None | Some "" -> env
       | Some x -> x::env
+    in
+    let env =
+      if Lazy.force relocatable then
+        (Filename.concat (Lazy.force prefix) "lib")::env
+      else env
     in
     String.concat path_sep env
 

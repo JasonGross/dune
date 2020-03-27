@@ -159,6 +159,7 @@ let test input =
          get_vcs=(fun _ -> None);
          get_location=(fun _ _ -> Path.root);
          get_localPath=(fun _ -> None);
+         is_relocatable=None;
        }
        ~input ~output);
   let result = Buffer.contents buf in

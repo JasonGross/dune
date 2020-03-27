@@ -90,6 +90,9 @@ Test embedding of sites locations information
 
   $ dune build
 
+Test with a normal installation
+--------------------------------
+
   $ dune install --prefix _install 2> /dev/null
 
 Once installed, we have the sites information:
@@ -102,6 +105,44 @@ Once installed, we have the sites information:
   c: $TESTCASE_ROOT/_install/share/c/data
   run b
   b: $TESTCASE_ROOT/_install/share/b/data
+  run c: b_registered:true
+
+Test with a relocatable installation
+--------------------------------
+
+  $ dune install --prefix _install_relocatable --relocatable 2> /dev/null
+
+Hack because findlib wants to load all the packages even the one already linked
+  $ mkdir _install_relocatable/lib/threads
+  $ echo 'package "posix" ( )' > _install_relocatable/lib/threads/META
+
+Once installed, we have the sites information:
+
+  $ _install_relocatable/bin/c
+  run a
+  a: $TESTCASE_ROOT/_install_relocatable/share/a/data
+  run c: a linked b_registered:false
+  no sourceroot
+  c: $TESTCASE_ROOT/_install_relocatable/share/c/data
+  run b
+  b: $TESTCASE_ROOT/_install_relocatable/share/b/data
+  run c: b_registered:true
+
+Test after moving a relocatable installation
+--------------------------------
+
+  $ mv _install_relocatable  _install_relocatable2
+
+Once installed, we have the sites information:
+
+  $ _install_relocatable2/bin/c
+  run a
+  a: $TESTCASE_ROOT/_install_relocatable2/share/a/data
+  run c: a linked b_registered:false
+  no sourceroot
+  c: $TESTCASE_ROOT/_install_relocatable2/share/c/data
+  run b
+  b: $TESTCASE_ROOT/_install_relocatable2/share/b/data
   run c: b_registered:true
 
 Test substitution when promoting

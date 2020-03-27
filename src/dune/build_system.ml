@@ -1660,6 +1660,7 @@ end = struct
                   ~conf:{ get_vcs = File_tree.nearest_vcs;
                           get_location;
                           get_localPath;
+                          is_relocatable = None;
                         }
                   ~chmod ))
     in

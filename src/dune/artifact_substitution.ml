@@ -36,12 +36,14 @@ type t =
   | Vcs_describe of Path.Source.t
   | Location of Section.t * Package.Name.t
   | LocalPath of localpath
+  | Relocatable
   | Repeat of int * string
 
 type conf = {
   get_vcs:(Path.Source.t -> Vcs.t option);
   get_location:(Section.t -> Package.Name.t -> Path.t);
   get_localPath:(localpath -> Path.t option);
+  is_relocatable: Path.t option;
 }
 
 let to_dyn = function
@@ -51,9 +53,17 @@ let to_dyn = function
   | LocalPath d  ->
     let v = match d with | SourceRoot -> "SourceRoot" | InstallLib -> "InstallLib" in
     Dyn.Variant ("LocalPath",[Dyn.Variant(v,[])])
+  | Relocatable ->
+    Dyn.Variant ("Relocatable",[])
   | Repeat (n, s) -> Dyn.Variant ("Repeat", [ Int n; String s ])
 
 let eval t ~conf =
+  let relocatable path =
+    (* return a relative path to the install directory in case of relocatable instead of absolute path *)
+    match conf.is_relocatable with
+    | None -> Path.to_absolute_filename path
+    | Some install -> Path.reach path ~from:install
+  in
   match t with
   | Repeat (n, s) ->
     Fiber.return (Array.make n s |> Array.to_list |> String.concat ~sep:"")
@@ -62,13 +72,15 @@ let eval t ~conf =
     | None -> Fiber.return ""
     | Some vcs -> Vcs.describe vcs )
   | Location (name,lib_name) ->
-    Fiber.return (Path.to_absolute_filename (conf.get_location name lib_name))
+    Fiber.return (relocatable (conf.get_location name lib_name))
   | LocalPath d ->
     Fiber.return
       (Option.value ~default:""
          (let open Option.O in
           let+ dir = (conf.get_localPath d) in
-          Path.to_absolute_filename dir))
+          relocatable dir))
+  | Relocatable ->
+    Fiber.return (if Option.is_some conf.is_relocatable then "y" else "n")
 
 let encode_replacement ~len ~repl:s =
   let repl = sprintf "=%u:%s" (String.length s) s in
@@ -98,6 +110,8 @@ let encode ?(min_len = 0) t =
         sprintf "localpath:sourceroot:"
       | LocalPath InstallLib ->
         sprintf "localpath:installlib:"
+      | Relocatable ->
+        sprintf "relocatable"
       | Repeat (n, s) -> sprintf "repeat:%d:%d:%s" n (String.length s) s )
   in
   let len =
@@ -168,6 +182,8 @@ let decode s =
       LocalPath SourceRoot
     | "localpath" :: "installlib" :: _ ->
       LocalPath InstallLib
+    | "relocatable" :: _ ->
+      Relocatable
     | "repeat" :: repeat :: rest ->
       Repeat (parse_int repeat, read_string_payload rest)
     | _ -> fail ()

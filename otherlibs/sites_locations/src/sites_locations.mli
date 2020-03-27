@@ -28,6 +28,7 @@ module Private_ : sig
   val site : package:string -> section:Section.t ->
     suffix:string -> encoded:string -> Location.t list
 
+  val relocatable: bool Lazy.t
   val ocamlpath: string -> string
   val sourceroot: string -> string option
 
