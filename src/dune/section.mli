@@ -48,3 +48,5 @@ module Site : sig
   include Stringlike_intf.S with type t := t
 
 end
+
+val sites_locations_syntax: Dune_lang.Syntax.t

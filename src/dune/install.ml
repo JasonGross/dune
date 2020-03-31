@@ -108,7 +108,9 @@ module SectionWithSite = struct
       ; ("stublibs", return (Section Stublibs))
       ; ("man", return (Section Man))
       ; ("misc", return (Section Misc))
-      ; ("site", pair Package.Name.decode Section.Site.decode
+      ; ("site",
+         Dune_lang.Syntax.since Section.sites_locations_syntax (0, 1) >>>
+         pair Package.Name.decode Section.Site.decode
          >>| (fun (pkg,site) -> Site {pkg;site}))
       ]
 end

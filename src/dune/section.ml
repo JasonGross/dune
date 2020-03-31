@@ -178,3 +178,8 @@ module Site = struct
 
   module Infix = Comparator.Operators (T)
 end
+
+
+let sites_locations_syntax =
+  Dune_lang.Syntax.create ~name:"sites_locations" ~desc:"the sites locations extension (experimental)"
+    [ ((0, 1), `Since (2, 5)); ]

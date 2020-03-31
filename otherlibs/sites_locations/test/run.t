@@ -6,7 +6,8 @@ Test embedding of sites locations information
   $ for i in a b; do
   > mkdir -p $i
   > cat >$i/dune-project <<EOF
-  > (lang dune 2.2)
+  > (lang dune 2.5)
+  > (using sites_locations 0.1)
   > (name $i)
   > (package (name $i) (sites (share data)))
   > EOF
@@ -15,7 +16,8 @@ Test embedding of sites locations information
   $ for i in c; do
   >   mkdir -p $i
   >   cat >$i/dune-project <<EOF
-  > (lang dune 2.2)
+  > (lang dune 2.5)
+  > (using sites_locations 0.1)
   > (name $i)
   > (package (name $i) (sites (share data) (lib plugins)))
   > EOF

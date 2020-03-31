@@ -394,9 +394,9 @@ let hash t = Name.hash t.name
 
 let decode ~dir =
   let open Dune_lang.Decoder in
-  let name_map of_list_map to_string name decode print_value error_msg =
+  let name_map syntax of_list_map to_string name decode print_value error_msg =
     field ~default:[] name
-      ( Dune_lang.Syntax.since Stanza.syntax (2, 0)
+      ( syntax
         >>> repeat decode )
     >>| (fun l ->
       match of_list_map l ~f:(fun (loc, s) -> (s, loc)) with
@@ -423,10 +423,14 @@ let decode ~dir =
      and+ info = Info.decode ~since:(2, 0) ()
      and+ tags = field "tags" (enter (repeat string)) ~default:[]
      and+ deprecated_package_names =
-       name_map Name.Map.of_list_map Name.to_string "deprecated_package_names"
+       name_map
+         (Dune_lang.Syntax.since Stanza.syntax (2, 0))
+         Name.Map.of_list_map Name.to_string "deprecated_package_names"
          (located Name.decode) Loc.to_file_colon_line "Deprecated package name"
      and+ sites =
-       name_map Section.Site.Map.of_list_map Section.Site.to_string "sites"
+       name_map
+         (Dune_lang.Syntax.since Stanza.syntax (2, 5))
+         Section.Site.Map.of_list_map Section.Site.to_string "sites"
          (pair Section.decode Section.Site.decode) Section.to_string "Site location name"
      in
      { name

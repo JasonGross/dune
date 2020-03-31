@@ -2208,11 +2208,11 @@ module Stanzas = struct
         and+ t = Deprecated_library_name.decode in
         [ Deprecated_library_name t ] )
     ; ( "generate_module"
-      , let+ () = Dune_lang.Syntax.since Stanza.syntax (2, 2)
+      , let+ () = Dune_lang.Syntax.since Section.sites_locations_syntax (0, 1)
         and+ t = Generate_module.decode in
         [ Generate_module t ] )
     ; ( "plugin"
-      , let+ () = Dune_lang.Syntax.since Stanza.syntax (2, 2)
+      , let+ () = Dune_lang.Syntax.since Section.sites_locations_syntax (0, 1)
         and+ t = Plugin.decode in
         [ Plugin t ] )
     ]

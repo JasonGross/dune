@@ -152,7 +152,9 @@ module Special_builtin_support = struct
           and+ info = Configurator.decode in
           Configurator info )
       ;  ("sites_locations"
-        (* , let+ () = Dune_lang.Syntax.since Stanza.syntax (2, 4) *)
+        (* , let+ () = Dune_lang.Syntax.since Stanza.syntax (2, 5)
+           (* moving dune's dune-project to 2.5 failed because of coq rules *)
+        *)
           ,let+ info = Sites_locations.decode in
           Sites_locations info)
       ]
